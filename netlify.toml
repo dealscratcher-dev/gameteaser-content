@@ -1,0 +1,51 @@
+# netlify.toml — root of monorepo
+# Deploys apps/web (Next.js 16 App Router) via @netlify/plugin-nextjs
+# API routes, middleware, SSR, and image optimisation all work.
+
+[build]
+  # Run from monorepo root
+  base    = "."
+  command = "pnpm install --no-frozen-lockfile && node scripts/build-ads-config.js && pnpm --filter web build"
+  publish = "apps/web/.next"
+
+[build.environment]
+  NODE_VERSION  = "22"
+  PNPM_VERSION  = "9"
+  TURBO_TELEMETRY_DISABLED = "1"
+  NEXT_TELEMETRY_DISABLED  = "1"
+
+# ── Next.js runtime plugin ────────────────────────────────────────────────────
+# Handles SSR, API routes, middleware, and image optimisation on Netlify.
+# Install once: pnpm add -D @netlify/plugin-nextjs  (in apps/web)
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+
+# ── Headers ───────────────────────────────────────────────────────────────────
+[[headers]]
+  for = "/ads.txt"
+  [headers.values]
+    Content-Type  = "text/plain; charset=utf-8"
+    Cache-Control = "public, max-age=300"
+
+[[headers]]
+  for = "/llms.txt"
+  [headers.values]
+    Content-Type = "text/plain; charset=utf-8"
+
+[[headers]]
+  for = "/llm.txt"
+  [headers.values]
+    Content-Type = "text/plain; charset=utf-8"
+
+[[headers]]
+  for = "/data/*"
+  [headers.values]
+    Content-Type               = "application/javascript; charset=utf-8"
+    Access-Control-Allow-Origin = "*"
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options        = "SAMEORIGIN"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy        = "strict-origin-when-cross-origin"

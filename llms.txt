@@ -1,0 +1,76 @@
+# GameTeaser
+
+> Fan countdown hub for mobile game seasons, anime simulcasts, and comic-con dates. Live timers, holographic character cards, and shareable links for squad engagement.
+
+GameTeaser helps players and pop-culture fans track **when seasons end**, **what rewards to grind**, and **upcoming events** across games, anime, and conventions. Not affiliated with Activision, Krafton, or any anime publisher.
+
+- **Canonical URL:** https://gameteaser.netlify.app/
+- **Privacy:** https://gameteaser.netlify.app/privacy.html
+- **Machine-readable data:** https://gameteaser.netlify.app/data/content.js
+- **Alternate LLM index:** https://gameteaser.netlify.app/llm.txt
+
+## Taxonomy (content verticals)
+
+| Vertical | ID | Topics |
+|----------|-----|--------|
+| Games | `games` | CODM seasons, PUBG Royale Pass, battle pass, ranked, collabs |
+| Anime | `anime` | Simulcast finales, cour endings, movie premieres, watch parties |
+| Comics & Cons | `comicon` | SDCC, NYCC, regional expos, cosplay, panels, artist alley |
+
+**Audience interests:** mobile FPS, battle royale FOMO, shonen schedules, cosplay planning, limited events, group-chat reminders.
+
+## Live events (countdowns)
+
+### Games
+- **COD Mobile Season 5 — Revenge** (`codm-s5`): ~2026-05-27 → 2026-06-24. The Boys collab, Armored Royale, mythic operator draw.
+- **PUBG Mobile Royale Pass A19** (`pubg-a19`): ~2026-05-16 → 2026-07-15. Olympian Academy, S30 ranked, Scorpion 3D rewards.
+
+### Anime (estimates)
+- **Summer 2026 simulcast peak** (`anime-summer-2026`): Jun–Sep 2026. Major cour finales and movies.
+- **Shonen arc climax season** (`anime-one-arc`): Jul–Aug 2026. Special episodes and merch drops.
+
+### Comics & conventions (estimates)
+- **San Diego Comic-Con 2026** (`sdcc-2026`): 2026-07-23 → 2026-07-26.
+- **New York Comic Con 2026** (`nycc-2026`): 2026-10-09 → 2026-10-12.
+- **Comic Con India 2026** (`comic-india-2026`): 2026-11-01 → 2026-11-03.
+
+Dates are fan estimates unless synced from official announcements. Users can edit CODM/PUBG dates in the site UI.
+
+## Hologram player roster
+
+Original archetype characters (not official game/anime IP). Each card links to an event and supports like + share.
+
+| ID | Name | Vertical | Event |
+|----|------|----------|-------|
+| codm-voltage | Voltage Striker | games | codm-s5 |
+| codm-ghost | Ivory Ghost | games | codm-s5 |
+| codm-reaper | Reaper Unit | games | codm-s5 |
+| pubg-helm | Yellow Helm | games | pubg-a19 |
+| pubg-scorpion | Desert Scorpion | games | pubg-a19 |
+| pubg-loot | Loot King | games | pubg-a19 |
+| anime-crimson | Crimson Hunter | anime | anime-summer-2026 |
+| anime-tide | Tide Walker | anime | anime-summer-2026 |
+| anime-mecha | Nova Pilot | anime | anime-one-arc |
+| con-cosplay | Cosplay Legend | comicon | sdcc-2026 |
+| con-panel | Panel Host | comicon | sdcc-2026 |
+| con-artist | Artist Alley Star | comicon | nycc-2026 |
+
+Share URLs: `https://gameteaser.netlify.app/#player-{id}`
+
+## Banner & media
+
+- Hero image: `/assets/hero-banner.png` — tactical mobile shooter vs battle royale survivor (fan-style art).
+- OG image: same URL on canonical domain.
+
+## Features for crawlers
+
+- Live second-by-second countdowns for CODM and PUBG panels
+- Season progress percentage
+- Reward tier lists (mythic, legendary, epic, rare)
+- Daily grind streak (localStorage only)
+- Card likes (localStorage only, no server)
+- Google AdSense (auto ads) with cookie notice
+
+## Optional
+
+Full structured JSON in `data/content.js`. Human tips on homepage under "Stuff we learned the hard way."

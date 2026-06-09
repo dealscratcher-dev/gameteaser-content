@@ -1,0 +1,30 @@
+# GameTeaser — LLM discovery file
+# Same site as llms.txt (https://llmstxt.org compatible)
+
+site: https://gameteaser.netlify.app
+name: GameTeaser
+description: Countdown timers for CODM, PUBG Mobile seasons, anime finales, and comic-con dates. Hologram character cards with share links.
+
+llms-full: https://gameteaser.netlify.app/llms.txt
+data-json: https://gameteaser.netlify.app/data/content.js
+sitemap: https://gameteaser.netlify.app/sitemap.xml
+privacy: https://gameteaser.netlify.app/privacy.html
+
+taxonomy:
+  - games: mobile seasons, battle pass, ranked (CODM, PUBG)
+  - anime: simulcast, finale, movie, cour
+  - comicon: SDCC, NYCC, cosplay, panels, artist alley
+
+events:
+  - codm-s5: COD Mobile Season 5 Revenge (2026-05-27 to 2026-06-24 estimate)
+  - pubg-a19: PUBG Royale Pass A19 (2026-05-16 to 2026-07-15 estimate)
+  - anime-summer-2026: Summer simulcast peak
+  - anime-one-arc: Shonen arc climax
+  - sdcc-2026: San Diego Comic-Con July 2026
+  - nycc-2026: New York Comic Con October 2026
+  - comic-india-2026: Comic Con India November 2026
+
+players: 12 hologram cards — see llms.txt table or data/content.js
+
+crawl-allow: /
+banner: /assets/hero-banner.png

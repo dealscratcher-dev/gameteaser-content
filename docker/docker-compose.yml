@@ -1,0 +1,99 @@
+# ============================================================
+# TheGameBit – docker-compose.dev.yml
+# Development environment
+# Usage:  docker compose -f docker/docker-compose.dev.yml up
+# ============================================================
+
+name: thegamebit-dev
+
+services:
+  # ── Next.js App ─────────────────────────────────────────
+  web:
+    build:
+      context: ..                        # repo root
+      dockerfile: docker/Dockerfile.fixed  # USING FIXED DOCKERFILE
+      target: dev
+    container_name: tgb-web-dev
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    env_file:
+      - ./.env.development
+    environment:
+      NODE_ENV: development
+      NEXT_TELEMETRY_DISABLED: "1"
+
+      # Supabase
+      NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY}
+      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY}
+
+      # Redis – points at the redis service in this compose file
+      REDIS_URL: redis://redis:6379
+
+      # App
+      NEXT_PUBLIC_SITE_URL: http://localhost:3000
+      NEXT_PUBLIC_GA_ID: ${NEXT_PUBLIC_GA_ID:-}
+    volumes:
+      # Mount source code for hot-reload
+      - ..:/repo
+      # IMPORTANT: Use anonymous volumes to keep container's node_modules and build cache
+      # This prevents your local (empty) node_modules from overriding the container's
+      - /repo/node_modules
+      - /repo/apps/web/.next
+      # Persist pnpm store across container restarts for faster installs
+      - pnpm_store_volume:/root/.pnpm-store
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    networks:
+      - tgb-dev
+
+  redis:
+    image: redis:7.2-alpine
+    container_name: tgb-redis-dev
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    env_file:
+      - ./.env.development
+    command: ["redis-server", "--loglevel", "notice", "--maxmemory", "128mb", "--maxmemory-policy", "allkeys-lru", "--save", "60", "1", "--appendonly", "yes"]
+    volumes:
+      - redis-dev-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 30s
+    networks:
+      - tgb-dev
+
+  # ── Redis GUI (dev only) ─────────────────────────────────
+  redis-insight:
+    image: redis/redisinsight:latest
+    container_name: tgb-redis-insight
+    restart: unless-stopped
+    ports:
+      - "5540:5540"
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - tgb-dev
+
+volumes:
+  redis-dev-data:
+  pnpm_store_volume:
+  # Note: node_modules_volume and next_cache_volume removed
+  # because we're using anonymous volumes now
+
+networks:
+  tgb-dev:
+    driver: bridge

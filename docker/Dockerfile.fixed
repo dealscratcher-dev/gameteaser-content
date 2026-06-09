@@ -1,0 +1,37 @@
+# ============================================================
+# TheGameBit – Next.js App Dockerfile (FIXED)
+# ============================================================
+
+FROM node:20-alpine AS base
+RUN apk add --no-cache libc6-compat curl
+RUN npm install -g pnpm@9
+
+# Development stage
+FROM base AS dev
+WORKDIR /repo
+
+ENV NODE_ENV=development
+ENV NEXT_TELEMETRY_DISABLED=1
+
+# Copy all package files first (better caching)
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY apps/web/package.json apps/web/
+COPY packages/*/package.json packages/
+
+# Set pnpm store to a consistent location
+RUN pnpm config set store-dir /repo/.pnpm-store
+
+# Install ALL dependencies including PostCSS ones
+RUN pnpm install --frozen-lockfile --shamefully-hoist
+
+# Also ensure PostCSS and autoprefixer are explicitly installed
+RUN cd apps/web && pnpm add -D tailwindcss postcss autoprefixer
+
+# Copy the rest of the source
+COPY . .
+
+WORKDIR /repo/apps/web
+
+EXPOSE 3000
+
+CMD ["pnpm", "dev"]
