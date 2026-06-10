@@ -10,7 +10,7 @@ services:
   # ── Next.js App ─────────────────────────────────────────
   web:
     build:
-      context: ..                        # repo root
+      context: ..                          # repo root
       dockerfile: docker/Dockerfile.fixed  # USING FIXED DOCKERFILE
       target: dev
     container_name: tgb-web-dev
@@ -36,7 +36,7 @@ services:
       NEXT_PUBLIC_GA_ID: ${NEXT_PUBLIC_GA_ID:-}
     volumes:
       # Mount source code for hot-reload
-      - ..:/repo
+      - /Users/amatuer_cyber/gameteaser-content:/repo
       # IMPORTANT: Use anonymous volumes to keep container's node_modules and build cache
       # This prevents your local (empty) node_modules from overriding the container's
       - /repo/node_modules
@@ -91,8 +91,6 @@ services:
 volumes:
   redis-dev-data:
   pnpm_store_volume:
-  # Note: node_modules_volume and next_cache_volume removed
-  # because we're using anonymous volumes now
 
 networks:
   tgb-dev:

@@ -1,9 +1,8 @@
 # netlify.toml — root of monorepo
-# Deploys apps/web (Next.js 16 App Router) via @netlify/plugin-nextjs
-# API routes, middleware, SSR, and image optimisation all work.
-
+# Netlify builds the Next.js app in apps/web and serves it with
+# @netlify/plugin-nextjs. Keep Edge-only routes out of the app unless the
+# Netlify Next runtime supports the exact Next version in use.
 [build]
-  # Run from monorepo root
   base    = "."
   command = "pnpm install --no-frozen-lockfile && node scripts/build-ads-config.js && pnpm --filter web build"
   publish = "apps/web/.next"
@@ -13,14 +12,11 @@
   PNPM_VERSION  = "9"
   TURBO_TELEMETRY_DISABLED = "1"
   NEXT_TELEMETRY_DISABLED  = "1"
+  NEXT_OTEL_FEATURE_DISABLED = "1"
 
-# ── Next.js runtime plugin ────────────────────────────────────────────────────
-# Handles SSR, API routes, middleware, and image optimisation on Netlify.
-# Install once: pnpm add -D @netlify/plugin-nextjs  (in apps/web)
 [[plugins]]
   package = "@netlify/plugin-nextjs"
 
-# ── Headers ───────────────────────────────────────────────────────────────────
 [[headers]]
   for = "/ads.txt"
   [headers.values]

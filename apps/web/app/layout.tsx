@@ -16,10 +16,10 @@ const ibmPlexSans = IBM_Plex_Sans({
 
 export const metadata: Metadata = {
   title: {
-    default: "TheGameBit",
-    template: "%s | TheGameBit",
+    default: "GameTeaser",
+    template: "%s | GameTeaser",
   },
-  description: "Explore game universes, characters, and releases.",
+  description: "Live countdowns for CODM, PUBG, anime finales, and comic-con events.",
 };
 
 export default function RootLayout({

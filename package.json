@@ -12,6 +12,7 @@
     "string-similarity": "^4.0.4"
   },
   "devDependencies": {
+    "@netlify/plugin-nextjs": "^5.15.11",
     "@types/string-similarity": "^4.0.2",
     "turbo": "^2.3.3"
   },

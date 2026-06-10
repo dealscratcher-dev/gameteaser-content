@@ -16,6 +16,3 @@ Allow: /
 
 Sitemap: https://gameteaser.netlify.app/sitemap.xml
 
-# Machine-readable site summary
-# https://gameteaser.netlify.app/llms.txt
-# https://gameteaser.netlify.app/llm.txt

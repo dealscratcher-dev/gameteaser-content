@@ -69,8 +69,8 @@ function TimeBlock({
       <span
         className="
           font-[family-name:var(--font-barlow-condensed)]
-          tabular-nums text-5xl font-extrabold leading-none tracking-tight text-white
-          sm:text-6xl
+          tabular-nums text-4xl font-extrabold leading-none tracking-tight text-white
+          min-[420px]:text-5xl sm:text-6xl
           [text-shadow:0_2px_12px_rgba(0,0,0,0.5)]
         "
         aria-hidden="true"
@@ -97,7 +97,7 @@ function Separator() {
       aria-hidden="true"
       className="
         font-[family-name:var(--font-barlow-condensed)]
-        mb-4 self-center text-3xl font-bold text-white/30
+        mb-4 self-center text-2xl font-bold text-white/30 sm:text-3xl
       "
     >
       :
@@ -175,7 +175,7 @@ export default function CountdownCard({
       className={cn(
         "relative isolate overflow-hidden rounded-sm",
         "border border-white/10 bg-zinc-900/80",
-        "p-5 sm:p-6",
+        "p-4 sm:p-6",
         // Subtle top gradient accent
         "before:absolute before:inset-x-0 before:top-0 before:h-px before:content-['']",
         accentVariant === "codm" && "before:bg-gradient-to-r before:from-transparent before:via-orange-500/60 before:to-transparent",
@@ -204,7 +204,7 @@ export default function CountdownCard({
               font-[family-name:var(--font-barlow-condensed)]
               text-xl font-extrabold uppercase leading-tight tracking-tight text-white
               sm:text-2xl
-              truncate
+              line-clamp-2
             "
           >
             {title}
@@ -212,7 +212,7 @@ export default function CountdownCard({
           {subtitle && (
             <p
               className="
-                mt-0.5 truncate text-xs text-white/50
+                mt-0.5 line-clamp-2 text-xs text-white/50
                 font-[family-name:var(--font-ibm-plex)]
               "
             >
@@ -250,7 +250,7 @@ export default function CountdownCard({
           role="timer"
           aria-live="polite"
           aria-label={`${days} days, ${hours} hours, ${minutes} minutes, ${seconds} seconds remaining`}
-          className="mb-5 flex items-end justify-center gap-2 sm:gap-4"
+          className="mb-5 grid grid-cols-[1fr_auto_1fr_auto_1fr_auto_1fr] items-end gap-1.5 sm:flex sm:justify-center sm:gap-4"
           suppressHydrationWarning
         >
           <TimeBlock value={days}    label="days" />
@@ -280,7 +280,7 @@ export default function CountdownCard({
       {/* ── Progress bar — matches .progress-wrap ── */}
       {showProgress && !expired && (
         <div className="space-y-1.5">
-          <div className="flex justify-between">
+          <div className="flex items-start justify-between gap-3">
             <span
               className="
                 text-[11px] text-white/40

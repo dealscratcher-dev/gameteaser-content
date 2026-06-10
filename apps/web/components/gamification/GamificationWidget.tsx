@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { createBrowserSupabaseClient } from '@/lib/supabase';
+import { createBrowserSupabaseClient } from '@/lib/supabase.client';
 import { UserProgression, UserStreak, Achievement } from '@/lib/gamification/types';
 import { AchievementNotification } from './AchievementNotification';
 

@@ -10,3 +10,9 @@
 body {
   @apply bg-zinc-950 text-white antialiased;
 }
+
+html,
+body {
+  max-width: 100%;
+  overflow-x: hidden;
+}
