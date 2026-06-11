@@ -2,7 +2,7 @@
   "name": "gameteaser",
   "version": "1.0.0",
   "private": true,
-  "description": "CODM & PUBG Mobile season countdown — gameteaser.netlify.app",
+  "description": "CODM & PUBG Mobile season countdown — thegamebit.online",
   "scripts": {
     "start": "node scripts/serve.js",
     "dev:web": "pnpm --filter web dev",

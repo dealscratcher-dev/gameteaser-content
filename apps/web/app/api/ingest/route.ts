@@ -94,41 +94,83 @@ function normalizeReleaseDate(item: any) {
  */
 export async function POST(request: NextRequest) {
   try {
-    // 1. Verify cron secret key
+    // ──────────────────────────────────────────────────────────────
+    // 1. LOG REQUEST METADATA
+    // ──────────────────────────────────────────────────────────────
+    console.log("[POST /api/ingest] Request received");
+    console.log(`[POST /api/ingest] Method: ${request.method}`);
+    
+    // ──────────────────────────────────────────────────────────────
+    // 2. VERIFY CRON SECRET
+    // ──────────────────────────────────────────────────────────────
     const clientSecret = request.headers.get("x-cron-secret");
     const expectedSecret = process.env.CRON_SECRET;
 
+    console.log(`[POST /api/ingest] CRON_SECRET env var: ${expectedSecret ? "✓ set" : "✗ missing"}`);
+
     if (!expectedSecret) {
-      console.error("[POST /api/ingest] CRON_SECRET is not configured in env.");
+      console.error("[POST /api/ingest] ✗ CRON_SECRET is not configured in env.");
       return NextResponse.json(
-        { error: "Internal Server Configuration Error" },
+        { error: "CRON_SECRET not configured" },
         { status: 500 }
       );
     }
 
     if (clientSecret !== expectedSecret) {
+      console.warn("[POST /api/ingest] ✗ X-Cron-Secret header mismatch (unauthorized)");
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // 2. Validate Twitch API variables
+    console.log("[POST /api/ingest] ✓ X-Cron-Secret verified");
+
+    // ──────────────────────────────────────────────────────────────
+    // 3. VALIDATE TWITCH API VARIABLES
+    // ──────────────────────────────────────────────────────────────
     const twitchClientId = process.env.TWITCH_CLIENT_ID;
     const twitchClientSecret = process.env.TWITCH_CLIENT_SECRET;
 
+    console.log(`[POST /api/ingest] TWITCH_CLIENT_ID env var: ${twitchClientId ? "✓ set" : "✗ missing"}`);
+    console.log(`[POST /api/ingest] TWITCH_CLIENT_SECRET env var: ${twitchClientSecret ? "✓ set" : "✗ missing"}`);
+
     if (!twitchClientId || !twitchClientSecret) {
-      console.error("[POST /api/ingest] Twitch credentials are not configured in env.");
+      console.error("[POST /api/ingest] ✗ Twitch credentials missing from env.");
       return NextResponse.json(
-        { error: "Twitch API Configuration Error" },
+        { error: "Twitch credentials not configured" },
         { status: 500 }
       );
     }
 
-    // 3. Set queries parameters (default limit 25, 120 days ahead)
+    // ──────────────────────────────────────────────────────────────
+    // 4. VALIDATE SUPABASE VARIABLES
+    // ──────────────────────────────────────────────────────────────
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+    console.log(`[POST /api/ingest] NEXT_PUBLIC_SUPABASE_URL env var: ${supabaseUrl ? "✓ set" : "✗ missing"}`);
+    console.log(`[POST /api/ingest] SUPABASE_SERVICE_ROLE_KEY env var: ${supabaseServiceKey ? "✓ set" : "✗ missing"}`);
+
+    if (!supabaseUrl || !supabaseServiceKey) {
+      console.error("[POST /api/ingest] ✗ Supabase credentials missing from env.");
+      return NextResponse.json(
+        { error: "Supabase credentials not configured" },
+        { status: 500 }
+      );
+    }
+
+    // ──────────────────────────────────────────────────────────────
+    // 5. FETCH TWITCH TOKEN
+    // ──────────────────────────────────────────────────────────────
+    console.log("[POST /api/ingest] Fetching Twitch access token...");
+    const token = await getTwitchAccessToken(twitchClientId, twitchClientSecret);
+    console.log("[POST /api/ingest] ✓ Twitch auth successful");
+
+    // ──────────────────────────────────────────────────────────────
+    // 6. QUERY IGDB
+    // ──────────────────────────────────────────────────────────────
     const limit = 25;
     const start = Math.floor(Date.now() / 1000);
     const end = start + (120 * 86400);
 
-    // 4. Connect to Twitch & query IGDB
-    const token = await getTwitchAccessToken(twitchClientId, twitchClientSecret);
     const queryStr = `
       fields
         date,
@@ -153,16 +195,33 @@ export async function POST(request: NextRequest) {
       limit ${limit};
     `;
 
+    console.log("[POST /api/ingest] Querying IGDB release_dates...");
     const releases = await igdbQuery("release_dates", queryStr, twitchClientId, token);
+    console.log(`[POST /api/ingest] ✓ IGDB returned ${releases.length} items`);
+
+    if (releases.length === 0) {
+      console.warn("[POST /api/ingest] ⚠ IGDB returned 0 items");
+    }
+
+    // ──────────────────────────────────────────────────────────────
+    // 7. NORMALIZE RECORDS
+    // ──────────────────────────────────────────────────────────────
     const normalized = releases
       .filter((item: any) => item.game?.id && item.game?.name)
       .map(normalizeReleaseDate);
 
-    console.log(`[Cron Ingest] Fetched ${releases.length} items; ${normalized.length} drafts.`);
+    console.log(`[POST /api/ingest] ✓ Normalized ${normalized.length} items for content_items`);
 
+    // ──────────────────────────────────────────────────────────────
+    // 8. CREATE ADMIN SUPABASE CLIENT
+    // ──────────────────────────────────────────────────────────────
+    console.log("[POST /api/ingest] Creating admin Supabase client...");
     const supabase = createAdminSupabaseClient();
+    console.log("[POST /api/ingest] ✓ Admin client created");
 
-    // 5. Save raw imports
+    // ──────────────────────────────────────────────────────────────
+    // 9. UPSERT RAW IMPORTS
+    // ──────────────────────────────────────────────────────────────
     const rawRows = releases.map((payload: any) => ({
       source: "igdb",
       source_id: String(payload.id),
@@ -171,31 +230,64 @@ export async function POST(request: NextRequest) {
       payload_checksum: checksum(payload),
     }));
 
+    let rawImportedCount = 0;
     if (rawRows.length > 0) {
-      const { error: rawError } = await (supabase
+      console.log(`[POST /api/ingest] Upserting ${rawRows.length} rows into raw_imports...`);
+      const { error: rawError, data: rawData } = await (supabase
         .from("raw_imports") as any)
         .upsert(rawRows, { onConflict: "source,source_id,source_endpoint" });
-      if (rawError) throw new Error(`raw_imports upsert failed: ${rawError.message}`);
+
+      if (rawError) {
+        console.error(`[POST /api/ingest] ✗ raw_imports upsert error: ${rawError.message}`);
+        throw new Error(`raw_imports upsert failed: ${rawError.message}`);
+      }
+
+      rawImportedCount = rawRows.length;
+      console.log(`[POST /api/ingest] ✓ raw_imports upsert successful (${rawImportedCount} rows)`);
+    } else {
+      console.warn("[POST /api/ingest] ⚠ No raw rows to upsert (releases.length === 0)");
     }
 
-    // 6. Save normalized drafts
+    // ──────────────────────────────────────────────────────────────
+    // 10. UPSERT NORMALIZED DRAFTS
+    // ──────────────────────────────────────────────────────────────
+    let draftStoredCount = 0;
     if (normalized.length > 0) {
-      const { error: contentError } = await (supabase
+      console.log(`[POST /api/ingest] Upserting ${normalized.length} rows into content_items...`);
+      const { error: contentError, data: contentData } = await (supabase
         .from("content_items") as any)
         .upsert(normalized, { onConflict: "source,source_id,type" });
-      if (contentError) throw new Error(`content_items upsert failed: ${contentError.message}`);
+
+      if (contentError) {
+        console.error(`[POST /api/ingest] ✗ content_items upsert error: ${contentError.message}`);
+        throw new Error(`content_items upsert failed: ${contentError.message}`);
+      }
+
+      draftStoredCount = normalized.length;
+      console.log(`[POST /api/ingest] ✓ content_items upsert successful (${draftStoredCount} rows)`);
+    } else {
+      console.warn("[POST /api/ingest] ⚠ No normalized rows to upsert (normalized.length === 0)");
     }
+
+    // ──────────────────────────────────────────────────────────────
+    // 11. RETURN SUCCESS
+    // ──────────────────────────────────────────────────────────────
+    console.log(`[POST /api/ingest] ✓ Cron execution complete: ${rawImportedCount} raw, ${draftStoredCount} drafts`);
 
     return NextResponse.json({
       success: true,
-      raw_imported: rawRows.length,
-      drafts_stored: normalized.length,
+      raw_imported: rawImportedCount,
+      drafts_stored: draftStoredCount,
+      timestamp: new Date().toISOString(),
     });
 
   } catch (err: any) {
-    console.error("[POST /api/ingest] Cron execution failed:", err);
+    console.error("[POST /api/ingest] ✗ Cron execution failed:", err.message);
     return NextResponse.json(
-      { error: err.message || "Ingestion failed" },
+      { 
+        error: err.message || "Ingestion failed",
+        timestamp: new Date().toISOString(),
+      },
       { status: 500 }
     );
   }

@@ -2,7 +2,7 @@
  * Hologram player cards, event grid, likes & shares
  */
 (function () {
-  const SITE = window.GT_CONTENT?.site?.url || "https://gameteaser.netlify.app";
+  const SITE = window.GT_CONTENT?.site?.url || "https://thegamebit.online";
   const LIKES_KEY = "gtCardLikes";
 
   function getEvent(id) {

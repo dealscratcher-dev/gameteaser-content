@@ -14,5 +14,5 @@ Allow: /
 User-agent: Google-Extended
 Allow: /
 
-Sitemap: https://gameteaser.netlify.app/sitemap.xml
+Sitemap: https://thegamebit.online/sitemap.xml
 

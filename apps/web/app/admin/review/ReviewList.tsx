@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import type { ContentItemRow } from "@/types";
 import { approveContent, rejectContent, needsChangesContent } from "./actions";
 import { useToast, ToastContainer } from "@/components/ui/Toast";
+import UpdateContentPanel from "./UpdateContentPanel";
 
 interface ReviewListProps {
   initialDrafts: ContentItemRow[];
@@ -14,6 +15,7 @@ export default function ReviewList({ initialDrafts }: ReviewListProps) {
   const [drafts, setDrafts] = useState<ContentItemRow[]>(initialDrafts);
   const [notes, setNotes] = useState<Record<string, string>>({});
   const [activeNotesId, setActiveNotesId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
   const handleApprove = (id: string) => {
@@ -86,7 +88,29 @@ export default function ReviewList({ initialDrafts }: ReviewListProps) {
         <div className="grid gap-6">
           {drafts.map((draft) => {
             const isEditingNotes = activeNotesId === draft.id;
-            
+            const isEditing = editingId === draft.id;
+
+            // ── Edit mode: full-width UpdateContentPanel ──
+            if (isEditing) {
+              return (
+                <UpdateContentPanel
+                  key={draft.id}
+                  draft={draft}
+                  onSaved={(updated) => {
+                    setDrafts((prev) =>
+                      prev.map((d) => (d.id === updated.id ? updated : d))
+                    );
+                  }}
+                  onPublished={(id) => {
+                    setDrafts((prev) => prev.filter((d) => d.id !== id));
+                    setEditingId(null);
+                  }}
+                  onCancel={() => setEditingId(null)}
+                />
+              );
+            }
+
+            // ── Review mode: existing card ──
             return (
               <div
                 key={draft.id}
@@ -127,7 +151,7 @@ export default function ReviewList({ initialDrafts }: ReviewListProps) {
                     <h3 className="font-[family-name:var(--font-barlow-condensed)] text-2xl font-extrabold uppercase leading-none tracking-tight text-white mb-2">
                       {draft.title}
                     </h3>
-                    
+
                     {draft.release_date && (
                       <p className="text-xs text-orange-300 font-semibold mb-3">
                         Release Date: {new Date(draft.release_date).toLocaleDateString("en-US", {
@@ -203,6 +227,17 @@ export default function ReviewList({ initialDrafts }: ReviewListProps) {
                         }`}
                       >
                         {isEditingNotes ? "Cancel" : "Needs Changes"}
+                      </button>
+                      {/* ── NEW: Edit button ── */}
+                      <button
+                        onClick={() => {
+                          setActiveNotesId(null);
+                          setEditingId(draft.id);
+                        }}
+                        disabled={isPending}
+                        className="min-h-9 border border-sky-500/30 bg-sky-950/20 text-sky-200 hover:bg-sky-500/20 hover:border-sky-400/50 px-3 py-1 text-xs font-bold uppercase tracking-[0.12em] transition rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/60 disabled:opacity-50"
+                      >
+                        Edit
                       </button>
                       <button
                         onClick={() => handleApprove(draft.id)}

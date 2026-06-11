@@ -1,14 +1,14 @@
 # GameTeaser — LLM discovery file
 # Same site as llms.txt (https://llmstxt.org compatible)
 
-site: https://gameteaser.netlify.app
+site: https://thegamebit.online
 name: GameTeaser
 description: Countdown timers for CODM, PUBG Mobile seasons, anime finales, and comic-con dates. Hologram character cards with share links.
 
-llms-full: https://gameteaser.netlify.app/llms.txt
-data-json: https://gameteaser.netlify.app/data/content.js
-sitemap: https://gameteaser.netlify.app/sitemap.xml
-privacy: https://gameteaser.netlify.app/privacy.html
+llms-full: https://thegamebit.online/llms.txt
+data-json: https://thegamebit.online/data/content.js
+sitemap: https://thegamebit.online/sitemap.xml
+privacy: https://thegamebit.online/privacy.html
 
 taxonomy:
   - games: mobile seasons, battle pass, ranked (CODM, PUBG)

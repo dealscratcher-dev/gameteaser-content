@@ -1,5 +1,5 @@
 /**
- * Production AdSense — gameteaser.netlify.app
+ * Production AdSense 
  * Publisher: ca-pub-4190145625443935
  */
 (function () {

@@ -4,10 +4,10 @@
 
 GameTeaser helps players and pop-culture fans track **when seasons end**, **what rewards to grind**, and **upcoming events** across games, anime, and conventions. Not affiliated with Activision, Krafton, or any anime publisher.
 
-- **Canonical URL:** https://gameteaser.netlify.app/
-- **Privacy:** https://gameteaser.netlify.app/privacy.html
-- **Machine-readable data:** https://gameteaser.netlify.app/data/content.js
-- **Alternate LLM index:** https://gameteaser.netlify.app/llm.txt
+- **Canonical URL:** https://thegamebit.online/
+- **Privacy:** https://thegamebit.online/privacy.html
+- **Machine-readable data:** https://thegamebit.online/data/content.js
+- **Alternate LLM index:** https://thegamebit.online/llm.txt
 
 ## Taxonomy (content verticals)
 
@@ -55,7 +55,7 @@ Original archetype characters (not official game/anime IP). Each card links to a
 | con-panel | Panel Host | comicon | sdcc-2026 |
 | con-artist | Artist Alley Star | comicon | nycc-2026 |
 
-Share URLs: `https://gameteaser.netlify.app/#player-{id}`
+Share URLs: `https://thegamebit.online/#player-{id}`
 
 ## Banner & media
 

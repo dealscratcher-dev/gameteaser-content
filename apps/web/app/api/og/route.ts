@@ -53,7 +53,7 @@ export async function GET(request: NextRequest) {
     font-family="Arial, Helvetica, sans-serif"
     font-size="28"
     font-weight="800"
-    fill="#fb923c">gameteaser.netlify.app</text>
+    fill="#fb923c">thegamebit.online</text>
 </svg>`;
 
   return new Response(svg, {

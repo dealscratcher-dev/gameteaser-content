@@ -1,11 +1,11 @@
 /**
  * GameTeaser content model — taxonomy, events, player holograms
- * https://gameteaser.netlify.app
+ * https://thegamebit.online
  */
 window.GT_CONTENT = {
   site: {
     name: "TheGamebit",
-    url: "https://gameteaser.netlify.app",
+    url: "https://thegamebit.online",
     tagline: "Countdown hub for mobile game seasons, anime drops, and comic-con dates",
     banner: "/assets/hero-banner.png",
     bannerAlt:

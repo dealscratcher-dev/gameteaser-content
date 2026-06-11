@@ -15,7 +15,7 @@ import {
 import type { HoloCardProps, HoloRarity } from "@/components/cards/HoloCard";
 import type { Vertical } from "@/hooks/useEventImages";
 
-// ─── Constants ────────────────────────────────────────────────────────────────
+// ─── Constants ───────────────────────────────────────────────────────────
 
 const NAV_ITEMS = [
   { label: "Countdowns", href: "#countdowns" },
@@ -42,7 +42,7 @@ const HERO_TAGS: HeroTag[] = [
   { emoji: "🦸", label: "Comic-Con dates",      variant: "comicon" },
 ];
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// ─── Helpers ──────────────────────────────────────────────────────────
 
 function getActiveVertical(): Vertical {
   const now = Date.now();
@@ -88,6 +88,10 @@ function cardForPlayer(player: PlayerCard, index: number): HoloCardProps {
   };
 }
 
+// ─── Type for tracking usage ───────────────────────────────────────────
+
+type ContentItemSource = { id: string; type: string; slug?: string; metadata?: any };
+
 // ─── Shared UI primitives ─────────────────────────────────────────────────────
 
 function SectionHeading({
@@ -131,7 +135,19 @@ function MiniStat({ value, label }: { value: string; label: string }) {
   );
 }
 
-// ─── Page ─────────────────────────────────────────────────────────────────────
+// ─── Helper to parse routing hint from metadata ───────────────────────
+
+function getRouteHint(item: any): string | null {
+  if (!item.metadata) return null;
+  try {
+    const parsed = typeof item.metadata === "string" ? JSON.parse(item.metadata) : item.metadata;
+    return parsed?.section_route || null;
+  } catch {
+    return null;
+  }
+}
+
+// ─── Page ───────────────────────────────────────────────────────────
 
 export const dynamic = "force-dynamic";
 
@@ -155,15 +171,37 @@ export default async function HomePage() {
     console.error("Failed to load published content items:", err);
   }
 
-  // 1. Curated Game Drops: up to 6 published releases, sorted by release_date descending
+  // ──────────────────────────────────────────────────────────────────────────
+  // DEDUPLICATION TRACKER: Track which DB items are used in which sections
+  // ──────────────────────────────────────────────────────────────────────────
+  const usedDbItems = new Set<string>(); // tracks IDs of used DB items
+
+  function markAsUsed(item: ContentItemSource) {
+    usedDbItems.add(item.id);
+  }
+
+  function isUsed(item: ContentItemSource): boolean {
+    return usedDbItems.has(item.id);
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // 1. CURATED GAME DROPS: Respect admin routing preference
+  // ──────────────────────────────────────────────────────────────────────────
   let displayReleases = publishedItems
-    .filter((item) => item.type === "release")
+    .filter((item) => {
+      const route = getRouteHint(item);
+      // Include items marked for curated drops OR high-quality releases by default
+      return (route === "curated-drops" || (route === null && item.type === "release" && item.quality_score && item.quality_score > 0.7));
+    })
     .sort((a, b) => {
       if (!a.release_date) return 1;
       if (!b.release_date) return -1;
       return new Date(b.release_date).getTime() - new Date(a.release_date).getTime();
     })
     .slice(0, 6);
+
+  // Mark these items as used
+  displayReleases.forEach((item) => markAsUsed(item));
 
   // Fallback if no published rows exist in the database
   if (displayReleases.length === 0) {
@@ -181,7 +219,9 @@ export default async function HomePage() {
     }));
   }
 
-  // 2. Category Windows Grid counts
+  // ──────────────────────────────────────────────────────────────────────────
+  // 2. CATEGORY WINDOWS GRID COUNTS
+  // ──────────────────────────────────────────────────────────────────────────
   const dbGamesCount = publishedItems.filter((item) => item.type === "release" || item.type === "game").length;
   const dbAnimeCount = publishedItems.filter((item) => item.type === "anime").length;
   const dbComiconCount = publishedItems.filter((item) => item.type === "comicon").length;
@@ -195,14 +235,22 @@ export default async function HomePage() {
     return dbCount + staticCount;
   };
 
-  // 3. Upcoming Drops (The next things on the board)
-  // Merge and deduplicate by title (lowercase)
+  // ──────────────────────────────────────────────────────────────────────────
+  // 3. UPCOMING DROPS: Respect routing + dedup (exclude already used items)
+  // ──────────────────────────────────────────────────────────────────────────
   const seenTitles = new Set<string>();
-  const mergedEvents: (SeasonEvent & { slug?: string })[] = [];
+  const mergedEvents: (SeasonEvent & { slug?: string; isFromDb?: boolean; dbId?: string })[] = [];
 
-  // Add DB items first
+  // Add DB items first (those NOT already used + routed to upcoming-drops)
   publishedItems
-    .filter((item) => ["release", "event", "anime", "comicon"].includes(item.type))
+    .filter((item) => {
+      const route = getRouteHint(item);
+      return (
+        ["release", "event", "anime", "comicon"].includes(item.type) && 
+        !isUsed(item) && // Only use items not already in Curated Game Drops
+        (route === "upcoming-drops" || (route === null && ["anime", "event", "comicon"].includes(item.type)))
+      );
+    })
     .forEach((item) => {
       let vertical: "games" | "anime" | "comicon" = "games";
       if (item.type === "anime") vertical = "anime";
@@ -220,7 +268,11 @@ export default async function HomePage() {
         end: item.release_date || new Date().toISOString(),
         rewards: [...(item.platforms || []), ...(item.genres || [])],
         slug: item.slug,
+        isFromDb: true,
+        dbId: item.id,
       });
+
+      markAsUsed(item); // Mark as used now
     });
 
   // Add static events if they are not already in seenTitles
@@ -237,9 +289,18 @@ export default async function HomePage() {
     (a, b) => new Date(a.end).getTime() - new Date(b.end).getTime()
   );
 
-  // 4. Hologram Roster
+  // ──────────────────────────────────────────────────────────────────────────
+  // 4. HOLOGRAM ROSTER: Respect routing + dedup (exclude already used items)
+  // ──────────────────────────────────────────────────────────────────────────
   const dbHoloCards: HoloCardProps[] = publishedItems
-    .filter((item) => ["release", "game", "anime", "comicon"].includes(item.type))
+    .filter((item) => {
+      const route = getRouteHint(item);
+      return (
+        ["release", "game", "anime", "comicon"].includes(item.type) && 
+        !isUsed(item) && // Only use items not already used
+        (route === "hologram-roster" || route === null) // Include items routed here or default
+      );
+    })
     .slice(0, 20)
     .map((item) => {
       let vertical: "games" | "anime" | "comicon" = "games";
@@ -253,6 +314,8 @@ export default async function HomePage() {
 
       const firstPlatform = item.platforms && item.platforms.length > 0 ? item.platforms[0] : "";
       const eyebrow = firstPlatform || (vertical === "games" ? "Multi-platform" : vertical);
+
+      markAsUsed(item); // Mark as used now
 
       return {
         slug: item.slug || item.id,
@@ -403,7 +466,7 @@ export default async function HomePage() {
                 <Link
                   key={event.id}
                   href={event.slug ? `/release/${event.slug}` : `/events/${event.id}`}
-                  className="group border border-white/10 bg-zinc-900/60 p-5 transition hover:-translate-y-0.5 hover:border-white/25 hover:bg-zinc-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500/60"
+                  className="group border border-white/10 bg-zinc-900/60 p-5 transition hover:-translate-y-0.5 hover:border-white/25 hover:bg-zinc-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500/60 rounded-lg"
                 >
                   <div className="mb-5 flex items-center justify-between gap-3">
                     <span
@@ -473,7 +536,7 @@ export default async function HomePage() {
                 return (
                   <div
                     key={item.id}
-                    className="group relative flex flex-col justify-between overflow-hidden border border-white/10 bg-zinc-900/40 p-5 transition-all duration-300 hover:-translate-y-1 hover:border-orange-500/30 hover:bg-zinc-900/70"
+                    className="group relative flex flex-col justify-between overflow-hidden border border-white/10 bg-zinc-900/40 p-5 transition-all duration-300 hover:-translate-y-1 hover:border-white/20 rounded-lg"
                   >
                     {/* Glow effect on hover */}
                     <div className="absolute inset-0 -z-10 bg-gradient-to-t from-orange-500/5 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
@@ -501,7 +564,7 @@ export default async function HomePage() {
                         <span className="text-[10px] font-bold uppercase tracking-[0.18em] border border-orange-500/25 bg-orange-500/10 text-orange-200 px-2 py-0.5 rounded">
                           {item.type || "release"}
                         </span>
-                        <h3 className="font-[family-name:var(--font-barlow-condensed)] text-xl font-extrabold uppercase leading-tight tracking-tight text-white mt-2 group-hover:text-orange-400 transition-colors line-clamp-2">
+                        <h3 className="font-[family-name:var(--font-barlow-condensed)] text-xl font-extrabold uppercase leading-tight tracking-tight text-white mt-2 group-hover:text-orange-400 transition-colors">
                           {item.title}
                         </h3>
                         <p className="text-xs text-white/45 mt-1 font-medium">{dateStr}</p>
@@ -607,10 +670,10 @@ export default async function HomePage() {
             </p>
             <div className="grid gap-2 min-[420px]:flex min-[420px]:flex-wrap">
               <Link
-                href="https://wa.me/?text=https%3A%2F%2Fgameteaser.netlify.app%2F"
+                href="https://wa.me/?text=https%3A%2F%2Fthegamebit.online%2F"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="min-h-11 border border-emerald-400/40 px-4 py-2 text-center font-[family-name:var(--font-barlow-condensed)] text-xs font-bold uppercase tracking-[0.18em] text-emerald-200 transition hover:bg-emerald-400 hover:text-zinc-950 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-400"
+                className="min-h-11 border border-emerald-400/40 px-4 py-2 text-center font-[family-name:var(--font-barlow-condensed)] text-xs font-bold uppercase tracking-[0.18em] text-emerald-200 hover:bg-emerald-500/10 transition-colors rounded"
               >
                 WhatsApp
               </Link>
