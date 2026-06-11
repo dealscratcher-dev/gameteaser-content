@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { createServerSupabaseClient } from "@/lib/supabase";
 import Hero, { type HeroTag } from "@/components/layout/Hero";
 import SiteHeader from "@/components/layout/SiteHeader";
 import SiteFooter from "@/components/layout/SiteFooter";
@@ -132,19 +133,150 @@ function MiniStat({ value, label }: { value: string; label: string }) {
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
-export default function HomePage() {
+export const dynamic = "force-dynamic";
+
+export default async function HomePage() {
   const activeVertical = getActiveVertical();
   const gameEvents     = SEASON_EVENTS.filter((e) => e.panelKey);
-  const nextEvents     = [...SEASON_EVENTS].sort(
+
+  // Fetch all published content items from DB
+  let publishedItems: any[] = [];
+  try {
+    const supabase = await createServerSupabaseClient();
+    const { data } = await (supabase.from("content_items") as any)
+      .select("*")
+      .eq("status", "published")
+      .limit(100);
+    
+    if (data) {
+      publishedItems = data;
+    }
+  } catch (err) {
+    console.error("Failed to load published content items:", err);
+  }
+
+  // 1. Curated Game Drops: up to 6 published releases, sorted by release_date descending
+  let displayReleases = publishedItems
+    .filter((item) => item.type === "release")
+    .sort((a, b) => {
+      if (!a.release_date) return 1;
+      if (!b.release_date) return -1;
+      return new Date(b.release_date).getTime() - new Date(a.release_date).getTime();
+    })
+    .slice(0, 6);
+
+  // Fallback if no published rows exist in the database
+  if (displayReleases.length === 0) {
+    displayReleases = SEASON_EVENTS.filter((e) => e.vertical === "games").slice(0, 6).map((e) => ({
+      id: e.id,
+      title: e.title,
+      summary: e.subtitle,
+      release_date: e.end,
+      platforms: ["PC", "Console"],
+      genres: ["Action"],
+      cover_url: null,
+      type: "release",
+      source: "static-fallback",
+      external_url: "#",
+    }));
+  }
+
+  // 2. Category Windows Grid counts
+  const dbGamesCount = publishedItems.filter((item) => item.type === "release" || item.type === "game").length;
+  const dbAnimeCount = publishedItems.filter((item) => item.type === "anime").length;
+  const dbComiconCount = publishedItems.filter((item) => item.type === "comicon").length;
+
+  const getVerticalCount = (vertical: "games" | "anime" | "comicon") => {
+    const staticCount = SEASON_EVENTS.filter((e) => e.vertical === vertical).length;
+    let dbCount = 0;
+    if (vertical === "games") dbCount = dbGamesCount;
+    else if (vertical === "anime") dbCount = dbAnimeCount;
+    else if (vertical === "comicon") dbCount = dbComiconCount;
+    return dbCount + staticCount;
+  };
+
+  // 3. Upcoming Drops (The next things on the board)
+  // Merge and deduplicate by title (lowercase)
+  const seenTitles = new Set<string>();
+  const mergedEvents: (SeasonEvent & { slug?: string })[] = [];
+
+  // Add DB items first
+  publishedItems
+    .filter((item) => ["release", "event", "anime", "comicon"].includes(item.type))
+    .forEach((item) => {
+      let vertical: "games" | "anime" | "comicon" = "games";
+      if (item.type === "anime") vertical = "anime";
+      else if (item.type === "comicon") vertical = "comicon";
+
+      const titleKey = item.title.trim().toLowerCase();
+      seenTitles.add(titleKey);
+
+      mergedEvents.push({
+        id: item.id,
+        vertical,
+        title: item.title,
+        subtitle: item.summary || "",
+        start: item.created_at || new Date().toISOString(),
+        end: item.release_date || new Date().toISOString(),
+        rewards: [...(item.platforms || []), ...(item.genres || [])],
+        slug: item.slug,
+      });
+    });
+
+  // Add static events if they are not already in seenTitles
+  SEASON_EVENTS.forEach((e) => {
+    const titleKey = e.title.trim().toLowerCase();
+    if (!seenTitles.has(titleKey)) {
+      seenTitles.add(titleKey);
+      mergedEvents.push(e);
+    }
+  });
+
+  // Sort timeline by date ascending (soonest to latest)
+  const nextEvents = mergedEvents.sort(
     (a, b) => new Date(a.end).getTime() - new Date(b.end).getTime()
   );
-  const holoCards = PLAYER_CARDS.map(cardForPlayer);
+
+  // 4. Hologram Roster
+  const dbHoloCards: HoloCardProps[] = publishedItems
+    .filter((item) => ["release", "game", "anime", "comicon"].includes(item.type))
+    .slice(0, 20)
+    .map((item) => {
+      let vertical: "games" | "anime" | "comicon" = "games";
+      if (item.type === "anime") vertical = "anime";
+      else if (item.type === "comicon") vertical = "comicon";
+
+      const score = item.quality_score ?? 0.5;
+      let rarity: HoloRarity = "rare";
+      if (score > 0.8) rarity = "legendary";
+      else if (score > 0.5) rarity = "epic";
+
+      const firstPlatform = item.platforms && item.platforms.length > 0 ? item.platforms[0] : "";
+      const eyebrow = firstPlatform || (vertical === "games" ? "Multi-platform" : vertical);
+
+      return {
+        slug: item.slug || item.id,
+        title: item.title,
+        subtitle: item.genres && item.genres.length > 0 ? item.genres.join(", ") : "Action, Adventure",
+        eyebrow: eyebrow,
+        image: item.cover_url || "/assets/hero-banner.png",
+        imageAlt: `${item.title} inspired card art`,
+        href: item.slug ? `/release/${item.slug}` : `/events/${item.id}`,
+        rarity: rarity,
+        variant: vertical === "games" ? "release" : "event",
+        tags: [vertical, ...(item.platforms || []), ...(item.genres || [])],
+        likeCount: Math.round(score * 420),
+        rank: undefined,
+        isNew: true,
+      };
+    });
+
+  const holoCards = [...dbHoloCards, ...PLAYER_CARDS.map(cardForPlayer)];
 
   return (
     <>
       {/* ── Header ──────────────────────────────────────────────────────── */}
       <SiteHeader
-        logoText="GameTeaser"
         navItems={NAV_ITEMS}
         showSearch={false}
         showNotifications={false}
@@ -168,8 +300,8 @@ export default function HomePage() {
         {/* ── Stats bar ─────────────────────────────────────────────────── */}
         <section aria-label="Platform statistics" className="border-y border-white/10 bg-zinc-950/95">
           <div className="mx-auto grid max-w-7xl gap-4 px-4 py-5 sm:grid-cols-3 md:px-6">
-            <MiniStat value={`${SEASON_EVENTS.length}`} label="tracked drops" />
-            <MiniStat value={`${PLAYER_CARDS.length}`}  label="holo cards" />
+            <MiniStat value={`${nextEvents.length}`} label="tracked drops" />
+            <MiniStat value={`${holoCards.length}`}  label="holo cards" />
             <MiniStat value={`${gameEvents.length}`}    label="live game timers" />
           </div>
         </section>
@@ -241,7 +373,7 @@ export default function HomePage() {
                       {vertical === "comicon" ? "Comic-cons" : vertical}
                     </p>
                     <p className="mt-1 text-sm opacity-70">
-                      {SEASON_EVENTS.filter((e) => e.vertical === vertical).length}{" "}
+                      {getVerticalCount(vertical)}{" "}
                       active windows
                     </p>
                   </div>
@@ -270,7 +402,7 @@ export default function HomePage() {
               return (
                 <Link
                   key={event.id}
-                  href={`/events/${event.id}`}
+                  href={event.slug ? `/release/${event.slug}` : `/events/${event.id}`}
                   className="group border border-white/10 bg-zinc-900/60 p-5 transition hover:-translate-y-0.5 hover:border-white/25 hover:bg-zinc-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500/60"
                 >
                   <div className="mb-5 flex items-center justify-between gap-3">
@@ -287,6 +419,18 @@ export default function HomePage() {
                   <p className="mt-2 text-sm leading-5 text-white/45">
                     {event.subtitle}
                   </p>
+
+                  {/* Platforms/Genres as card tags */}
+                  {event.rewards && event.rewards.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 mt-3 mb-2">
+                      {event.rewards.map((tag) => (
+                        <span key={tag} className="text-[9px] bg-white/5 border border-white/10 px-1.5 py-0.5 rounded text-white/60">
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
                   <p
                     className={`mt-5 font-[family-name:var(--font-barlow-condensed)] text-xl font-extrabold uppercase ${
                       remaining <= 3 && remaining > 0
@@ -301,6 +445,108 @@ export default function HomePage() {
                 </Link>
               );
             })}
+          </div>
+        </section>
+
+        {/* ── Curated Releases ─────────────────────────────────────────── */}
+        <section
+          aria-labelledby="curated-heading"
+          className="bg-white/[0.01] border-y border-white/5 py-12 sm:py-16"
+        >
+          <div className="mx-auto max-w-7xl px-4 md:px-6">
+            <SectionHeading
+              eyebrow="Curated Game Drops"
+              title="Vetted Releases & Countdowns"
+              copy="Curated by the community, approved by admins, and powered by IGDB."
+            />
+
+            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 mt-8">
+              {displayReleases.map((item) => {
+                const dateStr = item.release_date
+                  ? new Intl.DateTimeFormat("en", {
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                    }).format(new Date(item.release_date))
+                  : "TBD";
+
+                return (
+                  <div
+                    key={item.id}
+                    className="group relative flex flex-col justify-between overflow-hidden border border-white/10 bg-zinc-900/40 p-5 transition-all duration-300 hover:-translate-y-1 hover:border-orange-500/30 hover:bg-zinc-900/70"
+                  >
+                    {/* Glow effect on hover */}
+                    <div className="absolute inset-0 -z-10 bg-gradient-to-t from-orange-500/5 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+                    
+                    <div className="flex gap-4">
+                      {/* Image Thumbnail */}
+                      <div className="w-20 h-28 shrink-0 relative bg-zinc-950 rounded overflow-hidden border border-white/5 shadow-md">
+                        {item.cover_url ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={item.cover_url}
+                            alt={item.title}
+                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                            referrerPolicy="no-referrer"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-[10px] text-white/20 uppercase font-[family-name:var(--font-barlow-condensed)]">
+                            No Cover
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Info */}
+                      <div className="flex-1 min-w-0">
+                        <span className="text-[10px] font-bold uppercase tracking-[0.18em] border border-orange-500/25 bg-orange-500/10 text-orange-200 px-2 py-0.5 rounded">
+                          {item.type || "release"}
+                        </span>
+                        <h3 className="font-[family-name:var(--font-barlow-condensed)] text-xl font-extrabold uppercase leading-tight tracking-tight text-white mt-2 group-hover:text-orange-400 transition-colors line-clamp-2">
+                          {item.title}
+                        </h3>
+                        <p className="text-xs text-white/45 mt-1 font-medium">{dateStr}</p>
+                      </div>
+                    </div>
+
+                    <div className="mt-4">
+                      {item.summary && (
+                        <p className="text-xs leading-5 text-white/50 line-clamp-3 mb-4">
+                          {item.summary}
+                        </p>
+                      )}
+                      
+                      {/* Platform Badges */}
+                      <div className="flex flex-wrap gap-1.5 mb-4">
+                        {item.platforms?.slice(0, 3).map((plat: string) => (
+                          <span key={plat} className="text-[9px] bg-white/5 border border-white/10 px-1.5 py-0.5 rounded text-white/60">
+                            {plat}
+                          </span>
+                        ))}
+                        {item.platforms && item.platforms.length > 3 && (
+                          <span className="text-[9px] text-white/35">+{item.platforms.length - 3} more</span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between border-t border-white/5 pt-3 mt-auto">
+                      <span className="text-[10px] text-white/30 font-semibold uppercase tracking-wider">
+                        Source: {item.source}
+                      </span>
+                      {item.external_url && item.external_url !== "#" && (
+                        <a
+                          href={item.external_url}
+                          target="_blank"
+                          rel="noreferrer noopener"
+                          className="text-xs font-bold uppercase tracking-wider text-orange-400 hover:text-orange-300 transition-colors flex items-center gap-1"
+                        >
+                          Link ↗
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </section>
 
@@ -368,12 +614,6 @@ export default function HomePage() {
               >
                 WhatsApp
               </Link>
-              <Link
-                href="/llms.txt"
-                className="min-h-11 border border-white/15 px-4 py-2 text-center font-[family-name:var(--font-barlow-condensed)] text-xs font-bold uppercase tracking-[0.18em] text-white/70 transition hover:border-orange-300 hover:text-orange-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-orange-400"
-              >
-                LLM Index
-              </Link>
             </div>
           </div>
         </section>
@@ -381,7 +621,6 @@ export default function HomePage() {
 
       {/* ── Footer ──────────────────────────────────────────────────────── */}
       <SiteFooter
-        companyName="GameTeaser"
         legalNote="Fan hub, not official. Dates should be checked against official game and event channels."
       />
     </>

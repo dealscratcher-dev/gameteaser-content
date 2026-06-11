@@ -443,6 +443,169 @@ export interface Database {
         };
         Relationships: [];
       };
+
+      // ── raw_imports ────────────────────────────────────────────────────────
+      raw_imports: {
+        Row: {
+          id: string;
+          source: string;
+          source_id: string;
+          source_endpoint: string;
+          payload: Json;
+          payload_checksum: string | null;
+          fetched_at: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          source: string;
+          source_id: string;
+          source_endpoint: string;
+          payload: Json;
+          payload_checksum?: string | null;
+          fetched_at?: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          source?: string;
+          source_id?: string;
+          source_endpoint?: string;
+          payload?: Json;
+          payload_checksum?: string | null;
+          fetched_at?: string;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+
+      // ── content_items ──────────────────────────────────────────────────────
+      content_items: {
+        Row: {
+          id: string;
+          source: string;
+          source_id: string;
+          type: "game" | "release" | "event" | "anime" | "comicon" | "article";
+          status: "draft" | "in_review" | "published" | "rejected" | "archived";
+          title: string;
+          slug: string;
+          summary: string | null;
+          cover_url: string | null;
+          release_date: string | null;
+          platforms: string[];
+          genres: string[];
+          tags: string[];
+          external_url: string | null;
+          quality_score: number | null;
+          source_payload: Json;
+          review_notes: string | null;
+          published_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          source: string;
+          source_id: string;
+          type: "game" | "release" | "event" | "anime" | "comicon" | "article";
+          status?: "draft" | "in_review" | "published" | "rejected" | "archived";
+          title: string;
+          slug: string;
+          summary?: string | null;
+          cover_url?: string | null;
+          release_date?: string | null;
+          platforms?: string[];
+          genres?: string[];
+          tags?: string[];
+          external_url?: string | null;
+          quality_score?: number | null;
+          source_payload?: Json;
+          review_notes?: string | null;
+          published_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          source?: string;
+          source_id?: string;
+          type?: "game" | "release" | "event" | "anime" | "comicon" | "article";
+          status?: "draft" | "in_review" | "published" | "rejected" | "archived";
+          title?: string;
+          slug?: string;
+          summary?: string | null;
+          cover_url?: string | null;
+          release_date?: string | null;
+          platforms?: string[];
+          genres?: string[];
+          tags?: string[];
+          external_url?: string | null;
+          quality_score?: number | null;
+          source_payload?: Json;
+          review_notes?: string | null;
+          published_at?: string | null;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+
+      // ── content_reviews ────────────────────────────────────────────────────
+      content_reviews: {
+        Row: {
+          id: string;
+          content_id: string;
+          reviewer_id: string | null;
+          review_status: "needs_review" | "approved" | "rejected" | "needs_changes";
+          notes: string | null;
+          ai_summary: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          content_id: string;
+          reviewer_id?: string | null;
+          review_status: "needs_review" | "approved" | "rejected" | "needs_changes";
+          notes?: string | null;
+          ai_summary?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          content_id?: string;
+          reviewer_id?: string | null;
+          review_status?: "needs_review" | "approved" | "rejected" | "needs_changes";
+          notes?: string | null;
+          ai_summary?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+
+      // ── content_relations ──────────────────────────────────────────────────
+      content_relations: {
+        Row: {
+          id: string;
+          from_content_id: string;
+          to_content_id: string;
+          relation_type: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          from_content_id: string;
+          to_content_id: string;
+          relation_type: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          from_content_id?: string;
+          to_content_id?: string;
+          relation_type?: string;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
     };
 
     Views: {
@@ -543,6 +706,10 @@ export type BookmarkRow        = Tables<"bookmarks">;
 export type CharacterLikeRow   = Tables<"character_likes">;
 export type UniverseFollowRow  = Tables<"universe_follows">;
 export type UserInteractionRow = Tables<"user_interactions">;
+export type RawImportRow       = Tables<"raw_imports">;
+export type ContentItemRow     = Tables<"content_items">;
+export type ContentReviewRow   = Tables<"content_reviews">;
+export type ContentRelationRow = Tables<"content_relations">;
 
 // Named view types
 export type CharacterDetailView = Views<"character_details">;

@@ -4,7 +4,7 @@
 // Import everything from here, not from @db/database.types directly.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import type { EntityType as DbEntityType } from "@db/database.types";
+import type { EntityType as DbEntityType } from "../../../packages/db/database.types";
 
 // ── Re-export all DB types ────────────────────────────────────────────────────
 export type {
@@ -24,6 +24,10 @@ export type {
   CharacterLikeRow,
   UniverseFollowRow,
   UserInteractionRow,
+  RawImportRow,
+  ContentItemRow,
+  ContentReviewRow,
+  ContentRelationRow,
   // View aliases
   CharacterDetailView,
   UniverseCardView,
@@ -34,7 +38,7 @@ export type {
   ReleaseStatus,
   EntityType,
   InteractionType,
-} from "@db/database.types";
+} from "../../../packages/db/database.types";
 
 // ── SEO metadata ──────────────────────────────────────────────────────────────
 export interface SEOMeta {

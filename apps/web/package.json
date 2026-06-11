@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "ingest:igdb:drafts": "node scripts/ingest/igdb-drafts.mjs"
   },
   "dependencies": {
     "@opentelemetry/api": "^1.9.1",

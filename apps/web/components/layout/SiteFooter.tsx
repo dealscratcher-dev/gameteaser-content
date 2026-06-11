@@ -65,7 +65,6 @@ const DEFAULT_SECTIONS: FooterSection[] = [
     links: [
       { label: "About", href: "/about" },
       { label: "Blog", href: "/blog" },
-      { label: "Careers", href: "/careers" },
       { label: "Press Kit", href: "/press", external: true },
       { label: "Advertise", href: "/advertise" },
     ],
@@ -82,12 +81,13 @@ const DEFAULT_SECTIONS: FooterSection[] = [
   },
 ];
 
-const DEFAULT_SOCIALS: SocialLink[] = [
-  { platform: "twitter", href: "https://twitter.com/thegamebit", label: "Follow us on Twitter / X" },
-  { platform: "discord", href: "https://discord.gg/thegamebit", label: "Join our Discord" },
-  { platform: "youtube", href: "https://youtube.com/@thegamebit", label: "Subscribe on YouTube" },
-  { platform: "twitch", href: "https://twitch.tv/thegamebit", label: "Watch on Twitch" },
-];
+// const DEFAULT_SOCIALS: SocialLink[] = [
+//   { platform: "twitter", href: "https://twitter.com/thegamebit", label: "Follow us on Twitter / X" },
+//   { platform: "discord", href: "https://discord.gg/thegamebit", label: "Join our Discord" },
+//   { platform: "youtube", href: "https://youtube.com/@thegamebit", label: "Subscribe on YouTube" },
+//   { platform: "twitch", href: "https://twitch.tv/thegamebit", label: "Watch on Twitch" },
+// ];
+const DEFAULT_SOCIALS: SocialLink[] = [];
 
 // ─── Social Icons ─────────────────────────────────────────────────────────────
 
@@ -221,8 +221,8 @@ export default function SiteFooter({
             </p>
           </div>
 
-          {/* Socials */}
-          {socials.length > 0 && (
+          {/* Socials — commented out until social accounts are ready */}
+          {/* {socials.length > 0 && (
             <div className="flex items-center gap-2" aria-label="Social media links">
               {socials.map((s) => (
                 <a
@@ -243,7 +243,7 @@ export default function SiteFooter({
                 </a>
               ))}
             </div>
-          )}
+          )} */}
         </div>
 
         {/* ── Link grid ── */}

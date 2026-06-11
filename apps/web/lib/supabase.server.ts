@@ -7,7 +7,7 @@
 import { createServerClient as _createServerClient } from "@supabase/ssr";
 import { createClient }                               from "@supabase/supabase-js";
 import { cookies }                                    from "next/headers";
-import type { Database }                              from "@db/database.types";
+import type { Database }                              from "../../../packages/db/database.types";
 import { env, assertServerEnv }                       from "./env";
 
 // ── 1. Server client (Server Components / Route Handlers / Server Actions) ────

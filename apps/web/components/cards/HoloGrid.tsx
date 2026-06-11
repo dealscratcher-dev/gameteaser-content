@@ -128,9 +128,9 @@ const LAYOUT_OPTIONS: { value: HoloGridLayout; icon: React.ReactNode; label: str
 // ─── Layout class maps ────────────────────────────────────────────────────────
 
 const GRID_CLASSES: Record<HoloGridLayout, string> = {
-  grid:  "grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5",
-  dense: "grid grid-cols-3 gap-2.5 sm:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6",
-  list:  "grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4",
+  grid:  "grid grid-cols-1 gap-4 min-[380px]:grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5",
+  dense: "grid grid-cols-2 gap-2.5 min-[420px]:grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6",
+  list:  "grid grid-cols-1 gap-3 min-[420px]:grid-cols-2 sm:grid-cols-3 lg:grid-cols-4",
 };
 
 // ─── Sort fn ──────────────────────────────────────────────────────────────────
@@ -361,9 +361,9 @@ export default function HoloGrid({
           aria-label="Card filters and sorting"
         >
           {/* Row 1: tag search + sort + layout toggle */}
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="grid gap-2 sm:flex sm:flex-wrap sm:items-center">
             {/* Tag search */}
-            <div className="relative flex-1 min-w-[160px] max-w-xs">
+            <div className="relative w-full sm:min-w-[160px] sm:max-w-xs sm:flex-1">
               <svg
                 viewBox="0 0 20 20"
                 fill="none"
@@ -382,7 +382,7 @@ export default function HoloGrid({
                 onChange={(e) => updateFilter({ tag: e.target.value || undefined })}
                 aria-label="Search cards by tag or title"
                 className="
-                  w-full rounded-none border border-white/12 bg-white/5 pl-9 pr-3 py-2
+                  min-h-11 w-full rounded-none border border-white/12 bg-white/5 py-2 pl-9 pr-3
                   text-sm text-white placeholder:text-white/25
                   font-[family-name:var(--font-ibm-plex)]
                   focus:border-orange-500/50 focus:bg-white/8 focus:outline-none
@@ -392,7 +392,7 @@ export default function HoloGrid({
             </div>
 
             {/* Spacer */}
-            <div className="flex-1" />
+            <div className="hidden flex-1 sm:block" />
 
             {/* Sort dropdown */}
             <div className="relative">
@@ -405,7 +405,7 @@ export default function HoloGrid({
                 value={sort}
                 onChange={(e) => setSort(e.target.value as HoloGridSortKey)}
                 className="
-                  appearance-none rounded-none border border-white/12 bg-zinc-900/80 pl-3 pr-8 py-2
+                  min-h-11 w-full appearance-none rounded-none border border-white/12 bg-zinc-900/80 py-2 pl-3 pr-8 sm:w-auto
                   text-sm text-white/70 font-[family-name:var(--font-ibm-plex)]
                   focus:border-orange-500/50 focus:outline-none cursor-pointer
                   transition-colors hover:border-white/25
@@ -421,7 +421,7 @@ export default function HoloGrid({
             <div
               role="group"
               aria-label="Grid layout"
-              className="flex rounded-none border border-white/12 overflow-hidden"
+              className="flex w-full overflow-hidden rounded-none border border-white/12 sm:w-auto"
             >
               {LAYOUT_OPTIONS.map((opt) => (
                 <button
@@ -431,7 +431,7 @@ export default function HoloGrid({
                   aria-pressed={layout === opt.value}
                   onClick={() => setLayout(opt.value)}
                   className={cn(
-                    "flex h-9 w-9 items-center justify-center transition-colors",
+                    "flex h-11 flex-1 items-center justify-center transition-colors sm:h-9 sm:w-9 sm:flex-none",
                     "focus-visible:outline focus-visible:outline-2 focus-visible:outline-orange-400",
                     layout === opt.value
                       ? "bg-orange-500/20 text-orange-400"
@@ -445,7 +445,7 @@ export default function HoloGrid({
           </div>
 
           {/* Row 2: rarity chips */}
-          <div className="flex flex-wrap gap-1.5" aria-label="Filter by rarity">
+          <div className="flex gap-1.5 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:flex-wrap sm:overflow-visible sm:pb-0" aria-label="Filter by rarity">
             {RARITY_FILTER_OPTIONS.map((r) => {
               const active = filter.rarity?.includes(r.value);
               return (
@@ -455,7 +455,7 @@ export default function HoloGrid({
                   aria-pressed={active}
                   onClick={() => toggleRarity(r.value)}
                   className={cn(
-                    "rounded-none border px-3 py-1",
+                    "min-h-9 shrink-0 rounded-none border px-3 py-1",
                     "font-[family-name:var(--font-barlow-condensed)]",
                     "text-[10px] font-bold uppercase tracking-[0.15em]",
                     "transition-all duration-150",
@@ -480,7 +480,7 @@ export default function HoloGrid({
                   aria-pressed={active}
                   onClick={() => toggleVariant(v.value)}
                   className={cn(
-                    "rounded-none border px-3 py-1",
+                    "min-h-9 shrink-0 rounded-none border px-3 py-1",
                     "font-[family-name:var(--font-barlow-condensed)]",
                     "text-[10px] font-bold uppercase tracking-[0.15em]",
                     "transition-all duration-150",
@@ -502,7 +502,7 @@ export default function HoloGrid({
                 onClick={clearFilters}
                 aria-label="Clear all filters"
                 className="
-                  rounded-none border border-rose-700/40 bg-rose-950/30 px-3 py-1
+                  min-h-9 shrink-0 rounded-none border border-rose-700/40 bg-rose-950/30 px-3 py-1
                   font-[family-name:var(--font-barlow-condensed)]
                   text-[10px] font-bold uppercase tracking-[0.15em] text-rose-400
                   transition-colors hover:border-rose-600/60 hover:bg-rose-950/50

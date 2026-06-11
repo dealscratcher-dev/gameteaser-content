@@ -4,7 +4,7 @@
  */
 window.GT_CONTENT = {
   site: {
-    name: "GameTeaser",
+    name: "TheGamebit",
     url: "https://gameteaser.netlify.app",
     tagline: "Countdown hub for mobile game seasons, anime drops, and comic-con dates",
     banner: "/assets/hero-banner.png",

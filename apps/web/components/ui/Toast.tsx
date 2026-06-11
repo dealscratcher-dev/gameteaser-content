@@ -21,6 +21,7 @@ import {
   useId,
   useReducer,
   useRef,
+  useState,
 } from "react";
 import { createPortal } from "react-dom";
 
@@ -280,6 +281,11 @@ export function ToastContainer() {
   const ctx = useContext(ToastCtx);
   const [state, dispatch] = useReducer(toastReducer, { items: [] });
   const timersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const dismiss = useCallback((id: string) => {
     dispatch({ type: "MARK_LEAVING", id });
@@ -310,7 +316,7 @@ export function ToastContainer() {
     return () => _setContainerDispatch(null);
   }, [dismiss]);
 
-  if (typeof document === "undefined") return null;
+  if (!mounted || typeof document === "undefined") return null;
 
   return createPortal(
     <div

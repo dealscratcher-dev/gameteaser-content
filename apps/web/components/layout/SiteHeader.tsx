@@ -96,16 +96,15 @@ const DEFAULT_LINKS: NavLink[] = [
  *
  * When `logoText` is passed instead, renders it as a single styled string.
  */
-function Logo({ logoText = "GameTeaser" }: { logoText?: string }) {
-  const label = `${logoText} — Home`;
-
+function Logo({ logoText }: { logoText?: string }) {
   return (
     <Link
       href="/"
-      aria-label={label}
+      aria-label="TheGameBit — Home"
       className="flex items-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500/60 rounded-sm"
     >
-      {logoText !== "TheGameBit" ? (
+      {logoText ? (
+        // Custom wordmark override
         <span
           className="
             font-[family-name:var(--font-barlow-condensed)]
@@ -117,6 +116,7 @@ function Logo({ logoText = "GameTeaser" }: { logoText?: string }) {
           {logoText}
         </span>
       ) : (
+        // Default three-part mark — matches SiteFooter exactly
         <span
           className="
             font-[family-name:var(--font-barlow-condensed)]
@@ -468,6 +468,51 @@ function MobileDrawer({
             })}
           </ul>
         </nav>
+
+        {/* Secondary utility links */}
+        <div className="border-t border-white/[0.06] px-5 py-4 space-y-3">
+          <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/20 font-[family-name:var(--font-ibm-plex)]">
+            Company
+          </p>
+          <div className="flex flex-wrap gap-x-4 gap-y-2">
+            {[
+              { label: "About",     href: "/about" },
+              { label: "Blog",      href: "/blog" },
+              { label: "Press Kit", href: "/press" },
+              { label: "Advertise", href: "/advertise" },
+            ].map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                onClick={onClose}
+                className="text-xs text-white/35 transition-colors hover:text-white/70 font-[family-name:var(--font-ibm-plex)]"
+              >
+                {link.label}
+              </Link>
+            ))}
+          </div>
+          <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/20 font-[family-name:var(--font-ibm-plex)] pt-1">
+            Support
+          </p>
+          <div className="flex flex-wrap gap-x-4 gap-y-2">
+            {[
+              { label: "Help",    href: "/help" },
+              { label: "Privacy", href: "/privacy" },
+              { label: "Terms",   href: "/terms" },
+              { label: "Cookies", href: "/cookies" },
+              { label: "Contact", href: "/contact" },
+            ].map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                onClick={onClose}
+                className="text-xs text-white/35 transition-colors hover:text-white/70 font-[family-name:var(--font-ibm-plex)]"
+              >
+                {link.label}
+              </Link>
+            ))}
+          </div>
+        </div>
 
         {/* Footer */}
         {showAuth && (

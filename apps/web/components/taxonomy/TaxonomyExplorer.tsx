@@ -122,17 +122,17 @@ export function TaxonomyExplorer({ initialType = 'categories' }: TaxonomyExplore
          (activeType === 'tags'       && tags.length       === 0));
 
     return (
-        <div className="bg-gray-900 rounded-xl">
+        <div className="overflow-hidden rounded-lg bg-gray-900">
 
             {/* ── Type selector ─────────────────────────────────────────── */}
-            <div className="border-b border-gray-800 p-4">
-                <div className="flex gap-2">
+            <div className="border-b border-gray-800 p-3 sm:p-4">
+                <div className="flex gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:flex-wrap sm:overflow-visible sm:pb-0">
                     {TYPES.map(type => (
                         <button
                             key={type.id}
                             onClick={() => handleTypeChange(type.id)}
                             aria-pressed={activeType === type.id}
-                            className={`px-4 py-2 rounded-lg font-medium transition-all ${
+                            className={`min-h-11 shrink-0 rounded-lg px-4 py-2 font-medium transition-all ${
                                 activeType === type.id
                                     ? 'bg-blue-600 text-white'
                                     : 'text-gray-400 hover:text-white hover:bg-gray-800'
@@ -146,11 +146,11 @@ export function TaxonomyExplorer({ initialType = 'categories' }: TaxonomyExplore
             </div>
 
             {/* ── Content ───────────────────────────────────────────────── */}
-            <div className="p-6">
+            <div className="p-4 sm:p-6">
 
                 {/* Loading skeleton */}
                 {loading && (
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-1 gap-4 min-[380px]:grid-cols-2 md:grid-cols-4">
                         {Array.from({ length: 8 }).map((_, i) => (
                             <div key={i} className="bg-gray-800 rounded-lg p-4 animate-pulse">
                                 <div className="h-12 w-12 bg-gray-700 rounded-full mx-auto mb-3" />
@@ -184,16 +184,16 @@ export function TaxonomyExplorer({ initialType = 'categories' }: TaxonomyExplore
 
                 {/* Categories */}
                 {!loading && !error && activeType === 'categories' && categories.length > 0 && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
                         {categories.map(category => (
                             <Link
                                 key={category.id}
                                 href={`/category/${category.slug}`}
-                                className="group block bg-gray-800 rounded-lg p-4 hover:bg-gray-700 transition-all"
+                                className="group block rounded-lg bg-gray-800 p-4 transition-all hover:bg-gray-700"
                             >
                                 <div className="flex items-start gap-3">
-                                    <div className="text-3xl">{category.icon}</div>
-                                    <div className="flex-1">
+                                    <div className="shrink-0 text-3xl">{category.icon}</div>
+                                    <div className="min-w-0 flex-1">
                                         <h3 className="font-semibold text-lg group-hover:text-blue-400 transition">
                                             {category.name}
                                         </h3>
