@@ -6,12 +6,13 @@ import { useEffect, useRef, useState } from "react";
 import { useCountdown } from "@/components/countdown/CountdownDisplay";
 
 export interface Release {
-  id: string;                     // ✅ changed from number to string (UUID)
+  id: string;
   title: string;
   short: string;
   status: "past" | "current" | "upcoming";
   releaseDate: string;
   targetDate?: string;
+  coverUrl?: string;  // thumbnail image for the release
 }
 
 export interface ReleaseWheelProps {
@@ -39,29 +40,28 @@ function getGameTheme(release: Release): GameTheme {
   if (titleLower.includes("warzone")) {
     return {
       brand: "WARZONE",
-      accent: "#eab308", // Yellow
+      accent: "#eab308",
       glow: "rgba(234, 179, 8, 0.12)",
       border: "rgba(234, 179, 8, 0.25)"
     };
   } else if (titleLower.includes("pubg")) {
     return {
       brand: "PUBG MOBILE",
-      accent: "#f59e0b", // Amber
+      accent: "#f59e0b",
       glow: "rgba(245, 158, 11, 0.12)",
       border: "rgba(245, 158, 11, 0.25)"
     };
   } else if (shortUpper.startsWith("MW")) {
     return {
       brand: "MODERN WARFARE",
-      accent: "#5ba338", // MW green
+      accent: "#5ba338",
       glow: "rgba(91, 163, 56, 0.12)",
       border: "rgba(91, 163, 56, 0.25)"
     };
   } else {
-    // Default to Black Ops series
     return {
       brand: "BLACK OPS",
-      accent: "#ff7a00", // BO orange
+      accent: "#ff7a00",
       glow: "rgba(255, 122, 0, 0.12)",
       border: "rgba(255, 122, 0, 0.25)"
     };
@@ -190,10 +190,9 @@ function CountdownDigits({ unit, urgent, themeColor }: { unit: any; urgent: bool
   );
 }
 
-// ─── Ghost Card ──────────────────────────────────────────────────────────────
+// ─── Ghost Card with cover image ────────────────────────────────────────────
 
 function GhostCard({ release }: { release: Release }) {
-  const theme = getGameTheme(release);
   const subtitle = release.status === "past" ? release.releaseDate : "Coming Soon";
   
   return (
@@ -202,12 +201,19 @@ function GhostCard({ release }: { release: Release }) {
       height: 60,
       display: "flex",
       alignItems: "center",
-      gap: 12,
+      gap: 10,
       opacity: 0.45,
-      padding: "0 12px",
+      padding: "0 8px 0 12px",
       boxSizing: "border-box",
       userSelect: "none"
     }}>
+      {release.coverUrl && (
+        <img 
+          src={release.coverUrl} 
+          alt={release.title}
+          style={{ width: 40, height: 40, objectFit: "cover", borderRadius: 4, flexShrink: 0 }}
+        />
+      )}
       <GameBadge release={release} size="sm" />
       <div style={{ display: "flex", flexDirection: "column", minWidth: 0, flex: 1 }}>
         <h3 style={{
@@ -236,7 +242,7 @@ function GhostCard({ release }: { release: Release }) {
   );
 }
 
-// ─── Active card (no configuration) ─────────────────────────────────────────
+// ─── Active card with cover image ───────────────────────────────────────────
 
 function ActiveCard({ release }: { release: Release }) {
   const hasTimer = !!release.targetDate && release.status !== "past";
@@ -280,6 +286,13 @@ function ActiveCard({ release }: { release: Release }) {
       }} />
 
       <div style={{ display: "flex", alignItems: "center", gap: 10, zIndex: 2 }}>
+        {release.coverUrl && (
+          <img 
+            src={release.coverUrl} 
+            alt={release.title}
+            style={{ width: 48, height: 48, objectFit: "cover", borderRadius: 6, flexShrink: 0 }}
+          />
+        )}
         <GameBadge release={release} />
         <div style={{ display: "flex", flexDirection: "column", minWidth: 0, flex: 1 }}>
           <span style={{
