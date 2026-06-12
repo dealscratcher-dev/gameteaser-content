@@ -257,3 +257,137 @@ export async function updateContentDraft(
     return { error: err.message || "Failed to update draft" };
   }
 }
+
+/**
+ * Creates a countdown event directly in the database.
+ */
+export async function createContentEvent(
+  title: string,
+  subtitle: string,
+  startDate: string,
+  endDate: string,
+  rewards: string[],
+  panelKey?: string,
+  vertical: string = "games",
+  slug?: string
+) {
+  try {
+    const supabase = getAdminClient();
+    const now = new Date().toISOString();
+    const eventSlug = slug || title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+
+    const metadata = {
+      created_via: "admin-ui",
+      vertical,
+      start_date: startDate,
+      end_date: endDate,
+      panel_key: panelKey || null,
+      rewards,
+    };
+
+    const tags = ["event", vertical];
+    if (panelKey) tags.push(panelKey.toLowerCase());
+    tags.push(...rewards.map(r => r.toLowerCase()));
+
+    const row = {
+      source: "admin",
+      source_id: eventSlug,
+      type: "event",
+      status: "published", // events go live immediately when created by admins
+      title,
+      slug: eventSlug,
+      summary: subtitle,
+      release_date: endDate ? endDate.split("T")[0] : null,
+      platforms: [],
+      genres: [],
+      tags: Array.from(new Set(tags.map(t => t.trim().toLowerCase()).filter(Boolean))),
+      metadata,
+      source_payload: { created_at: now },
+      created_at: now,
+      updated_at: now,
+      published_at: now,
+    };
+
+    const { error } = await (supabase.from("content_items") as any).upsert(row, {
+      onConflict: "source,source_id,type",
+    });
+
+    if (error) {
+      console.error("[createContentEvent] upsert error:", error);
+      return { error: error.message };
+    }
+
+    revalidatePath("/admin/review");
+    revalidatePath("/");
+    revalidatePath(`/events/${eventSlug}`);
+    if (panelKey) revalidatePath(`/${panelKey}`);
+
+    return { success: true, slug: eventSlug };
+  } catch (err: any) {
+    console.error("[createContentEvent] unhandled exception:", err);
+    return { error: err.message || "Failed to create event" };
+  }
+}
+
+/**
+ * Creates an article content item directly in the database.
+ */
+export async function createContentArticle(
+  title: string,
+  summary: string,
+  body: string,
+  coverUrl: string,
+  tags: string[],
+  slug?: string
+) {
+  try {
+    const supabase = getAdminClient();
+    const now = new Date().toISOString();
+    const articleSlug = slug || title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+
+    const metadata = {
+      created_via: "admin-ui",
+      body,
+    };
+
+    const allTags = [...tags, "article"];
+
+    const row = {
+      source: "admin",
+      source_id: articleSlug,
+      type: "article",
+      status: "published", // articles go live immediately
+      title,
+      slug: articleSlug,
+      summary,
+      cover_url: coverUrl || null,
+      platforms: [],
+      genres: [],
+      tags: Array.from(new Set(allTags.map(t => t.trim().toLowerCase()).filter(Boolean))),
+      metadata,
+      source_payload: { created_at: now },
+      created_at: now,
+      updated_at: now,
+      published_at: now,
+    };
+
+    const { error } = await (supabase.from("content_items") as any).upsert(row, {
+      onConflict: "source,source_id,type",
+    });
+
+    if (error) {
+      console.error("[createContentArticle] upsert error:", error);
+      return { error: error.message };
+    }
+
+    revalidatePath("/admin/review");
+    revalidatePath("/");
+    revalidatePath(`/blog`);
+
+    return { success: true, slug: articleSlug };
+  } catch (err: any) {
+    console.error("[createContentArticle] unhandled exception:", err);
+    return { error: err.message || "Failed to create article" };
+  }
+}
+

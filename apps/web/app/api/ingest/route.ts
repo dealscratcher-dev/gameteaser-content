@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createAdminSupabaseClient } from "@/lib/supabase";
 import { createHash } from "node:crypto";
 
-export const dynamic = "force-dynamic";
+import { revalidatePath } from 'next/cache';
 
 function checksum(payload: any) {
   return createHash("sha256").update(JSON.stringify(payload)).digest("hex");
@@ -88,6 +88,127 @@ function normalizeReleaseDate(item: any) {
   };
 }
 
+function mapGenre(anilistGenre: string): string {
+  const genreMap: Record<string, string> = {
+    'Action': 'action',
+    'Adventure': 'adventure',
+    'Comedy': 'comedy',
+    'Drama': 'drama',
+    'Fantasy': 'fantasy',
+    'Horror': 'horror',
+    'Mystery': 'mystery',
+    'Romance': 'romance',
+    'Sci-Fi': 'sci_fi',
+    'Slice of Life': 'slice_of_life',
+    'Sports': 'sports',
+    'Supernatural': 'supernatural',
+    'Thriller': 'thriller'
+  };
+  return genreMap[anilistGenre] || 'other';
+}
+
+function normalizeAnime(item: any) {
+  const title = item.title.english || item.title.romaji || item.title.native;
+  
+  let releaseDate = null;
+  if (item.startDate?.year) {
+    const y = item.startDate.year;
+    const m = String(item.startDate.month || 1).padStart(2, "0");
+    const d = String(item.startDate.day || 1).padStart(2, "0");
+    releaseDate = `${y}-${m}-${d}`;
+  }
+
+  const slug = `${slugify(title || "anilist-release")}-${item.id}`;
+  const summary = item.description ? item.description.replace(/<[^>]*>/g, "") : null;
+  
+  const genres = item.genres?.map((g: string) => mapGenre(g)) || [];
+  const platforms = item.format ? [item.format] : [];
+  
+  const tags = [
+    "anilist",
+    "anime-release",
+    ...genres,
+    ...platforms.map((p: string) => p.toLowerCase())
+  ];
+
+  return {
+    source: "anilist",
+    source_id: String(item.id),
+    type: "anime",
+    status: "draft",
+    title,
+    slug,
+    summary,
+    cover_url: item.coverImage?.extraLarge || item.coverImage?.large || null,
+    release_date: releaseDate,
+    platforms,
+    genres,
+    tags: [...new Set(tags)],
+    external_url: item.siteUrl || null,
+    quality_score: item.averageScore ? Math.min(Number(item.averageScore) / 100, 1) : null,
+    source_payload: item,
+    featured: false,
+    metadata: {
+      format: item.format,
+      status: item.status,
+      episodes: item.episodes,
+      isAdult: item.isAdult,
+      banner_image: item.bannerImage,
+      mal_id: item.idMal,
+      section_route: "upcoming-drops",
+    }
+  };
+}
+
+async function fetchAniListUpcoming(limitCount: number) {
+  const apiUrl = "https://graphql.anilist.co";
+  const query = `
+    query ($page: Int, $perPage: Int) {
+      Page(page: $page, perPage: $perPage) {
+        media(type: ANIME, status: NOT_YET_RELEASED, sort: POPULARITY_DESC) {
+          id
+          idMal
+          title {
+            romaji
+            english
+            native
+          }
+          synonyms
+          description
+          startDate { year month day }
+          coverImage { large extraLarge }
+          bannerImage
+          genres
+          tags { name rank }
+          averageScore
+          popularity
+          siteUrl
+          format
+          status
+          episodes
+          isAdult
+        }
+      }
+    }
+  `;
+
+  const response = await fetch(apiUrl, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      query,
+      variables: { page: 1, perPage: limitCount }
+    })
+  });
+
+  if (!response.ok) {
+    throw new Error(`AniList query failed: ${response.status} ${await response.text()}`);
+  }
+
+  const data = await response.json();
+  return data.data?.Page?.media || [];
+}
+
 /**
  * Secure HTTP POST endpoint triggered by scheduled database crons (pg_cron).
  * Expects custom header X-Cron-Secret to match env.CRON_SECRET.
@@ -124,24 +245,7 @@ export async function POST(request: NextRequest) {
     console.log("[POST /api/ingest] ✓ X-Cron-Secret verified");
 
     // ──────────────────────────────────────────────────────────────
-    // 3. VALIDATE TWITCH API VARIABLES
-    // ──────────────────────────────────────────────────────────────
-    const twitchClientId = process.env.TWITCH_CLIENT_ID;
-    const twitchClientSecret = process.env.TWITCH_CLIENT_SECRET;
-
-    console.log(`[POST /api/ingest] TWITCH_CLIENT_ID env var: ${twitchClientId ? "✓ set" : "✗ missing"}`);
-    console.log(`[POST /api/ingest] TWITCH_CLIENT_SECRET env var: ${twitchClientSecret ? "✓ set" : "✗ missing"}`);
-
-    if (!twitchClientId || !twitchClientSecret) {
-      console.error("[POST /api/ingest] ✗ Twitch credentials missing from env.");
-      return NextResponse.json(
-        { error: "Twitch credentials not configured" },
-        { status: 500 }
-      );
-    }
-
-    // ──────────────────────────────────────────────────────────────
-    // 4. VALIDATE SUPABASE VARIABLES
+    // 3. VALIDATE SUPABASE VARIABLES
     // ──────────────────────────────────────────────────────────────
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -157,132 +261,164 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // ──────────────────────────────────────────────────────────────
-    // 5. FETCH TWITCH TOKEN
-    // ──────────────────────────────────────────────────────────────
-    console.log("[POST /api/ingest] Fetching Twitch access token...");
-    const token = await getTwitchAccessToken(twitchClientId, twitchClientSecret);
-    console.log("[POST /api/ingest] ✓ Twitch auth successful");
-
-    // ──────────────────────────────────────────────────────────────
-    // 6. QUERY IGDB
-    // ──────────────────────────────────────────────────────────────
-    const limit = 25;
-    const start = Math.floor(Date.now() / 1000);
-    const end = start + (120 * 86400);
-
-    const queryStr = `
-      fields
-        date,
-        human,
-        region,
-        platform.id,
-        platform.name,
-        game.id,
-        game.name,
-        game.slug,
-        game.summary,
-        game.url,
-        game.total_rating,
-        game.cover.url,
-        game.genres.name,
-        game.platforms.name;
-      where date >= ${start}
-        & date <= ${end}
-        & game != null
-        & game.version_parent = null;
-      sort date asc;
-      limit ${limit};
-    `;
-
-    console.log("[POST /api/ingest] Querying IGDB release_dates...");
-    const releases = await igdbQuery("release_dates", queryStr, twitchClientId, token);
-    console.log(`[POST /api/ingest] ✓ IGDB returned ${releases.length} items`);
-
-    if (releases.length === 0) {
-      console.warn("[POST /api/ingest] ⚠ IGDB returned 0 items");
-    }
-
-    // ──────────────────────────────────────────────────────────────
-    // 7. NORMALIZE RECORDS
-    // ──────────────────────────────────────────────────────────────
-    const normalized = releases
-      .filter((item: any) => item.game?.id && item.game?.name)
-      .map(normalizeReleaseDate);
-
-    console.log(`[POST /api/ingest] ✓ Normalized ${normalized.length} items for content_items`);
-
-    // ──────────────────────────────────────────────────────────────
-    // 8. CREATE ADMIN SUPABASE CLIENT
-    // ──────────────────────────────────────────────────────────────
     console.log("[POST /api/ingest] Creating admin Supabase client...");
     const supabase = createAdminSupabaseClient();
     console.log("[POST /api/ingest] ✓ Admin client created");
 
     // ──────────────────────────────────────────────────────────────
-    // 9. UPSERT RAW IMPORTS
+    // 4. IGDB INGESTION BLOCK
     // ──────────────────────────────────────────────────────────────
-    const rawRows = releases.map((payload: any) => ({
-      source: "igdb",
-      source_id: String(payload.id),
-      source_endpoint: "release_dates",
-      payload,
-      payload_checksum: checksum(payload),
-    }));
+    let igdbRawCount = 0;
+    let igdbDraftsCount = 0;
+    let igdbError: string | null = null;
 
-    let rawImportedCount = 0;
-    if (rawRows.length > 0) {
-      console.log(`[POST /api/ingest] Upserting ${rawRows.length} rows into raw_imports...`);
-      const { error: rawError, data: rawData } = await (supabase
-        .from("raw_imports") as any)
-        .upsert(rawRows, { onConflict: "source,source_id,source_endpoint" });
+    const twitchClientId = process.env.TWITCH_CLIENT_ID;
+    const twitchClientSecret = process.env.TWITCH_CLIENT_SECRET;
 
-      if (rawError) {
-        console.error(`[POST /api/ingest] ✗ raw_imports upsert error: ${rawError.message}`);
-        throw new Error(`raw_imports upsert failed: ${rawError.message}`);
-      }
-
-      rawImportedCount = rawRows.length;
-      console.log(`[POST /api/ingest] ✓ raw_imports upsert successful (${rawImportedCount} rows)`);
+    if (!twitchClientId || !twitchClientSecret) {
+      console.warn("[POST /api/ingest] ⚠ Twitch credentials missing; skipping IGDB ingestion.");
+      igdbError = "Twitch credentials not configured";
     } else {
-      console.warn("[POST /api/ingest] ⚠ No raw rows to upsert (releases.length === 0)");
+      try {
+        console.log("[POST /api/ingest] Starting IGDB ingestion...");
+        console.log("[POST /api/ingest] Fetching Twitch access token...");
+        const token = await getTwitchAccessToken(twitchClientId, twitchClientSecret);
+        
+        const limit = 25;
+        const start = Math.floor(Date.now() / 1000);
+        const end = start + (120 * 86400);
+
+        const queryStr = `
+          fields
+            date,
+            human,
+            region,
+            platform.id,
+            platform.name,
+            game.id,
+            game.name,
+            game.slug,
+            game.summary,
+            game.url,
+            game.total_rating,
+            game.cover.url,
+            game.genres.name,
+            game.platforms.name;
+          where date >= ${start}
+            & date <= ${end}
+            & game != null
+            & game.version_parent = null;
+          sort date asc;
+          limit ${limit};
+        `;
+
+        console.log("[POST /api/ingest] Querying IGDB release_dates...");
+        const releases = await igdbQuery("release_dates", queryStr, twitchClientId, token);
+        console.log(`[POST /api/ingest] ✓ IGDB returned ${releases.length} items`);
+
+        if (releases.length > 0) {
+          const normalized = releases
+            .filter((item: any) => item.game?.id && item.game?.name)
+            .map(normalizeReleaseDate);
+
+          const rawRows = releases.map((payload: any) => ({
+            source: "igdb",
+            source_id: String(payload.id),
+            source_endpoint: "release_dates",
+            payload,
+            payload_checksum: checksum(payload),
+          }));
+
+          console.log(`[POST /api/ingest] Upserting ${rawRows.length} IGDB raw rows...`);
+          const { error: rawError } = await (supabase
+            .from("raw_imports") as any)
+            .upsert(rawRows, { onConflict: "source,source_id,source_endpoint" });
+          if (rawError) throw new Error(`raw_imports upsert failed: ${rawError.message}`);
+          igdbRawCount = rawRows.length;
+
+          console.log(`[POST /api/ingest] Upserting ${normalized.length} IGDB drafts...`);
+          const { error: contentError } = await (supabase
+            .from("content_items") as any)
+            .upsert(normalized, { onConflict: "source,source_id,type" });
+          if (contentError) throw new Error(`content_items upsert failed: ${contentError.message}`);
+          igdbDraftsCount = normalized.length;
+          
+          console.log("[POST /api/ingest] ✓ IGDB ingestion completed successfully");
+        }
+      } catch (err: any) {
+        console.error("[POST /api/ingest] ✗ IGDB ingestion error:", err.message || err);
+        igdbError = err.message || "Unknown error";
+      }
     }
 
     // ──────────────────────────────────────────────────────────────
-    // 10. UPSERT NORMALIZED DRAFTS
+    // 5. ANILIST INGESTION BLOCK
     // ──────────────────────────────────────────────────────────────
-    let draftStoredCount = 0;
-    if (normalized.length > 0) {
-      console.log(`[POST /api/ingest] Upserting ${normalized.length} rows into content_items...`);
-      const { error: contentError, data: contentData } = await (supabase
-        .from("content_items") as any)
-        .upsert(normalized, { onConflict: "source,source_id,type" });
+    let anilistRawCount = 0;
+    let anilistDraftsCount = 0;
+    let anilistError: string | null = null;
 
-      if (contentError) {
-        console.error(`[POST /api/ingest] ✗ content_items upsert error: ${contentError.message}`);
-        throw new Error(`content_items upsert failed: ${contentError.message}`);
+    try {
+      console.log("[POST /api/ingest] Starting AniList ingestion...");
+      const limit = 25;
+      const mediaList = await fetchAniListUpcoming(limit);
+      console.log(`[POST /api/ingest] ✓ AniList returned ${mediaList.length} items`);
+
+      if (mediaList.length > 0) {
+        const normalized = mediaList.map(normalizeAnime);
+
+        const rawRows = mediaList.map((payload: any) => ({
+          source: "anilist",
+          source_id: String(payload.id),
+          source_endpoint: "graphql:media",
+          payload,
+          payload_checksum: checksum(payload),
+        }));
+
+        console.log(`[POST /api/ingest] Upserting ${rawRows.length} AniList raw rows...`);
+        const { error: rawError } = await (supabase
+          .from("raw_imports") as any)
+          .upsert(rawRows, { onConflict: "source,source_id,source_endpoint" });
+        if (rawError) throw new Error(`raw_imports upsert failed: ${rawError.message}`);
+        anilistRawCount = rawRows.length;
+
+        console.log(`[POST /api/ingest] Upserting ${normalized.length} AniList drafts...`);
+        const { error: contentError } = await (supabase
+          .from("content_items") as any)
+          .upsert(normalized, { onConflict: "source,source_id,type" });
+        if (contentError) throw new Error(`content_items upsert failed: ${contentError.message}`);
+        anilistDraftsCount = normalized.length;
+
+        console.log("[POST /api/ingest] ✓ AniList ingestion completed successfully");
       }
-
-      draftStoredCount = normalized.length;
-      console.log(`[POST /api/ingest] ✓ content_items upsert successful (${draftStoredCount} rows)`);
-    } else {
-      console.warn("[POST /api/ingest] ⚠ No normalized rows to upsert (normalized.length === 0)");
+    } catch (err: any) {
+      console.error("[POST /api/ingest] ✗ AniList ingestion error:", err.message || err);
+      anilistError = err.message || "Unknown error";
     }
 
     // ──────────────────────────────────────────────────────────────
-    // 11. RETURN SUCCESS
+    // 6. RETURN UNIFIED SUCCESS STATUS
     // ──────────────────────────────────────────────────────────────
-    console.log(`[POST /api/ingest] ✓ Cron execution complete: ${rawImportedCount} raw, ${draftStoredCount} drafts`);
+    console.log("[POST /api/ingest] ✓ Cron execution finished");
+await revalidatePath("/admin/review");
 
     return NextResponse.json({
       success: true,
-      raw_imported: rawImportedCount,
-      drafts_stored: draftStoredCount,
+      igdb: {
+        raw_imported: igdbRawCount,
+        drafts_stored: igdbDraftsCount,
+        error: igdbError,
+      },
+      anilist: {
+        raw_imported: anilistRawCount,
+        drafts_stored: anilistDraftsCount,
+        error: anilistError,
+      },
       timestamp: new Date().toISOString(),
     });
 
   } catch (err: any) {
-    console.error("[POST /api/ingest] ✗ Cron execution failed:", err.message);
+    console.error("[POST /api/ingest] ✗ Fatal cron execution error:", err.message || err);
     return NextResponse.json(
       { 
         error: err.message || "Ingestion failed",

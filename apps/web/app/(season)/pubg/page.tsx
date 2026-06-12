@@ -2,26 +2,65 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import HeroBanner from "@/components/layout/HeroBanner";
 import CountdownCard from "@/components/countdown/CountdownCard";
+import { createServerSupabaseClient } from "@/lib/supabase";
 import { getEventsByPanel, getPlayersByEvent } from "@/lib/seasons/content";
+
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "PUBG Mobile Royale Pass Countdown",
   description: "Live countdown for PUBG Mobile Royale Pass A19 — mythic sets, 3D finishes, and UC rebates.",
 };
 
-export default function PubgSeasonPage() {
-  const events = getEventsByPanel("pubg");
-  const mainEvent = events[0];
-  const players = mainEvent ? getPlayersByEvent(mainEvent.id) : [];
+export default async function PubgSeasonPage() {
+  const supabase = await createServerSupabaseClient();
+  let mainEvent: any = null;
+
+  try {
+    const { data } = await (supabase.from("content_items") as any)
+      .select("*")
+      .eq("type", "event")
+      .eq("status", "published")
+      .filter("metadata->>panel_key", "eq", "pubg")
+      .order("release_date", { ascending: true }) // soonest ending first
+      .limit(1);
+
+    if (data && data.length > 0) {
+      const dbEvent = data[0];
+      mainEvent = {
+        id: dbEvent.slug,
+        title: dbEvent.title,
+        subtitle: dbEvent.summary || "",
+        start: dbEvent.metadata?.start_date || dbEvent.created_at,
+        end: dbEvent.metadata?.end_date || dbEvent.release_date,
+        rewards: dbEvent.metadata?.rewards || dbEvent.tags || [],
+        panelKey: dbEvent.metadata?.panel_key || "pubg",
+      };
+    }
+  } catch (err) {
+    console.error("Failed to load PUBG event from database:", err);
+  }
+
+  // Fallback to static config
+  if (!mainEvent) {
+    const events = getEventsByPanel("pubg");
+    mainEvent = events[0];
+  }
+
+  // Retrieve players for hologram grid. Fallback to pubg-a19 players if no players found for the db id
+  let players = mainEvent ? getPlayersByEvent(mainEvent.id) : [];
+  if (players.length === 0) {
+    players = getPlayersByEvent("pubg-a19");
+  }
 
   return (
     <>
       <HeroBanner
         title="PUBG Mobile"
-        highlight="Royale Pass"
+        highlight={mainEvent?.title.replace("PUBG Mobile — ", "") || "Royale Pass"}
         kicker="battlegrounds mobile"
-        tags={[{ emoji: "🪖", label: "Royale Pass A19", variant: "pubg" }]}
-        ctaLabel="View Event"
+        tags={[{ emoji: "🪖", label: mainEvent?.title || "Royale Pass", variant: "pubg" }]}
+        ctaLabel="View Event Details"
         ctaHref={mainEvent ? `/events/${mainEvent.id}` : "/"}
       />
 
@@ -43,7 +82,7 @@ export default function PubgSeasonPage() {
             <div className="mt-6">
               <h2 className="mb-3 font-barlow text-xl font-bold uppercase text-white">Rewards</h2>
               <ul className="flex flex-wrap gap-2">
-                {mainEvent.rewards.map((reward) => (
+                {mainEvent.rewards.map((reward: string) => (
                   <li key={reward} className="rounded-full bg-yellow-400/10 px-3 py-1 text-sm text-yellow-300 ring-1 ring-yellow-400/20">
                     {reward}
                   </li>

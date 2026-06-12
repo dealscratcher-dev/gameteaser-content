@@ -7,7 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "ingest:igdb:drafts": "node scripts/ingest/igdb-drafts.mjs"
+    "ingest:igdb:drafts": "node scripts/ingest/igdb-drafts.mjs",
+    "ingest:anilist:drafts": "node scripts/ingest/anilist-drafts.mjs",
+    "create-content": "node scripts/ingest/create-content.mjs"
   },
   "dependencies": {
     "@opentelemetry/api": "^1.9.1",
@@ -15,6 +17,7 @@
     "@supabase/ssr": "^0.5.2",
     "@supabase/supabase-js": "^2.47.10",
     "clsx": "^2.1.1",
+    "framer-motion": "^12.40.0",
     "ioredis": "^5.4.2",
     "next": "^16.2.7",
     "react": "^19.2.7",

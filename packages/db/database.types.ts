@@ -502,6 +502,8 @@ export interface Database {
           published_at: string | null;
           created_at: string;
           updated_at: string;
+          featured: boolean | null;
+          metadata: Json | null;
         };
         Insert: {
           id?: string;
@@ -524,6 +526,8 @@ export interface Database {
           published_at?: string | null;
           created_at?: string;
           updated_at?: string;
+          featured?: boolean | null;
+          metadata?: Json | null;
         };
         Update: {
           id?: string;
@@ -545,6 +549,8 @@ export interface Database {
           review_notes?: string | null;
           published_at?: string | null;
           updated_at?: string;
+          featured?: boolean | null;
+          metadata?: Json | null;
         };
         Relationships: [];
       };
