@@ -37,6 +37,20 @@ export async function createServerSupabaseClient() {
   );
 }
 
+// ── Public read client (Server Components / cached public pages) ────────────
+export function createPublicSupabaseClient() {
+  return createClient<Database>(
+    env.NEXT_PUBLIC_SUPABASE_URL,
+    env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
+    }
+  );
+}
+
 // ── 2. Admin client (Server-only – bypasses RLS) ─────────────────────────────
 // IMPORTANT: Never expose this to the client bundle.
 // Usage: seed scripts, background jobs, admin API routes.

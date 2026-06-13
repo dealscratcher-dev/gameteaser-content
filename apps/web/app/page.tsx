@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { createServerSupabaseClient } from "@/lib/supabase";
+import { createPublicSupabaseClient } from "@/lib/supabase";
 import Hero, { type HeroTag } from "@/components/layout/Hero";
 import SiteHeader from "@/components/layout/SiteHeader";
 import SiteFooter from "@/components/layout/SiteFooter";
@@ -102,10 +102,10 @@ function getPosterTitle(slug: string): string {
 }
 
 // ─── Page ───────────────────────────────────────────────────────────────
-export const dynamic = "force-dynamic";
+export const revalidate = 300;
 
 export default async function HomePage() {
-  const supabase = await createServerSupabaseClient();
+  const supabase = createPublicSupabaseClient();
 
   // ============================================================
   // 1. Fetch data for Countdown Wheels (franchises + releases)

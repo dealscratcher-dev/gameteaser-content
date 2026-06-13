@@ -1,46 +1,30 @@
 // app/admin/SessionGuard.tsx
 // ─────────────────────────────────────────────────────────────────────────────
-// Mounts invisibly in the admin layout and signs the user out automatically
-// when the tab/window is closed or navigated away from.
-//
-// Uses two complementary events:
-//   • "visibilitychange" (hidden) — fires reliably when the tab loses focus
-//     or the window is minimised / closed in most browsers.
-//   • "pagehide" — fires on mobile Safari & during bfcache navigation.
+// Mounts invisibly on admin pages and keeps the router in sync with Supabase
+// auth changes. It must never sign out on tab hide/pagehide: browsers fire
+// those events during normal tab switches, reloads, mobile app switches, and
+// bfcache restores, which can leave the admin route looking like a cookie bug.
 // ─────────────────────────────────────────────────────────────────────────────
 "use client";
 
 import { useEffect } from "react";
-import { createBrowserClient } from "@supabase/ssr";
+import { useRouter } from "next/navigation";
+import { createBrowserSupabaseClient } from "@/lib/supabase.client";
 
 export default function SessionGuard() {
+  const router = useRouter();
+
   useEffect(() => {
-    const supabase = createBrowserClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    );
-
-    const handleHide = () => {
-      // document.hidden is true when the tab is being closed or switched away.
-      if (document.hidden) {
-        // signOut() is async but we fire-and-forget here because the page is
-        // unloading — we can't await in a synchronous event handler.
-        supabase.auth.signOut();
+    const supabase = createBrowserSupabaseClient();
+    const { data: subscription } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "SIGNED_OUT") {
+        router.replace("/admin/login");
+        router.refresh();
       }
-    };
+    });
 
-    const handlePageHide = () => {
-      supabase.auth.signOut();
-    };
-
-    document.addEventListener("visibilitychange", handleHide);
-    window.addEventListener("pagehide", handlePageHide);
-
-    return () => {
-      document.removeEventListener("visibilitychange", handleHide);
-      window.removeEventListener("pagehide", handlePageHide);
-    };
-  }, []);
+    return () => subscription.subscription.unsubscribe();
+  }, [router]);
 
   // Renders nothing — purely behavioural.
   return null;
