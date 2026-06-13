@@ -1,2 +1,8 @@
 name = "gameteaser-content-jun12"
 pages_build_output_dir = "apps/web/.next"
+
+[build]
+command = "pnpm install && pnpm --filter web build && cp -LR apps/web/.next .next"
+
+[env.production]
+pages_build_output_dir = ".next"
