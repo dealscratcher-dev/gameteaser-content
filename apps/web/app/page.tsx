@@ -12,15 +12,15 @@ import type { Vertical } from "@/hooks/useEventImages";
 // ─── Constants ───────────────────────────────────────────────────────────
 const NAV_ITEMS = [
   { label: "Countdowns", href: "#countdowns" },
+  { label: "New Releases", href: "#new-releases" },
   { label: "Track", href: "#track" },
-  { label: "Roster", href: "#roster" },
-  { label: "Notes", href: "#notes" },
+  { label: "Blogs", href: "#blogs" },
 ];
 
 const HERO_TAGS: HeroTag[] = [
-  { emoji: "🎮", label: "Game seasons", variant: "codm" },
-  { emoji: "📺", label: "Anime finales", variant: "anime" },
-  { emoji: "🦸", label: "Comic-Con dates", variant: "comicon" },
+  { label: "Game seasons", variant: "codm" },
+  { label: "Anime finales", variant: "anime" },
+  { label: "Comic-Con dates", variant: "comicon" },
 ];
 
 // ─── Helper functions ───────────────────────────────────────────────────
@@ -76,19 +76,6 @@ function SectionHeading({
           {copy}
         </p>
       )}
-    </div>
-  );
-}
-
-function MiniStat({ value, label }: { value: string; label: string }) {
-  return (
-    <div className="border border-white/10 bg-white/[0.04] px-4 py-3">
-      <p className="font-[family-name:var(--font-barlow-condensed)] text-3xl font-extrabold uppercase leading-none text-white">
-        {value}
-      </p>
-      <p className="mt-1 text-xs uppercase tracking-[0.18em] text-white/35">
-        {label}
-      </p>
     </div>
   );
 }
@@ -157,7 +144,7 @@ export default async function HomePage() {
           targetDate: r.target_timestamp
             ? new Date(r.target_timestamp).toISOString()
             : undefined,
-            coverUrl: r.cover_url, 
+          coverUrl: r.cover_url,
         }));
       return {
         franchise,
@@ -181,17 +168,6 @@ export default async function HomePage() {
     console.error("Failed to load published content items:", err);
   }
 
-  const totalDrops = publishedItems.filter(
-    (item) =>
-      item.type === "release" || item.type === "event" || item.type === "anime" || item.type === "comicon"
-  ).length;
-  const totalHoloCards = publishedItems.filter(
-    (item) => ["release", "game", "anime", "comicon"].includes(item.type)
-  ).length;
-  const activeTimers = publishedItems.filter(
-    (item) => item.target_timestamp && new Date(item.target_timestamp) > new Date()
-  ).length;
-
   const upcomingItems = publishedItems
     .filter((item) => item.target_timestamp && new Date(item.target_timestamp) > new Date())
     .sort((a, b) => new Date(a.target_timestamp).getTime() - new Date(b.target_timestamp).getTime())
@@ -211,6 +187,12 @@ export default async function HomePage() {
       return dateB - dateA;
     })
     .slice(0, 6);
+
+  // Latest blog / article posts for the #blogs section
+  const latestBlogPosts = publishedItems
+    .filter((item) => item.type === "article")
+    .sort((a, b) => new Date(b.published_at).getTime() - new Date(a.published_at).getTime())
+    .slice(0, 3);
 
   const holoCards: HoloCardProps[] = publishedItems
     .filter((item) => ["release", "game", "anime", "comicon"].includes(item.type))
@@ -279,14 +261,6 @@ export default async function HomePage() {
           className="min-h-[620px] sm:min-h-[680px]"
         />
 
-        <section aria-label="Platform statistics" className="border-y border-white/10 bg-zinc-950/95">
-          <div className="mx-auto grid max-w-7xl gap-4 px-4 py-5 sm:grid-cols-3 md:px-6">
-            <MiniStat value={`${totalDrops}`} label="tracked drops" />
-            <MiniStat value={`${totalHoloCards}`} label="holo cards" />
-            <MiniStat value={`${activeTimers}`} label="live game timers" />
-          </div>
-        </section>
-
         {/* Countdown Wheels - now fully driven by franchises & releases */}
         <section
           id="countdowns"
@@ -317,39 +291,6 @@ export default async function HomePage() {
               No releases found. Add franchises and releases to get started.
             </p>
           )}
-        </section>
-
-        {/* What we track */}
-        <section
-          id="track"
-          aria-labelledby="track-heading"
-          className="bg-white/[0.03] py-12 sm:py-16"
-        >
-          <div className="mx-auto grid max-w-7xl gap-8 px-4 md:px-6 lg:grid-cols-[0.85fr_1.15fr]">
-            <div>
-              <SectionHeading
-                eyebrow="What we track"
-                title="Games, anime, and convention windows"
-                copy="Taxonomy-driven browsing — the component owns the UI, the data stays clean."
-              />
-              <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
-                {(["games", "anime", "comicon"] as const).map((vertical) => (
-                  <div
-                    key={vertical}
-                    className={`border px-4 py-4 ${verticalStyles[vertical]}`}
-                  >
-                    <p className="font-[family-name:var(--font-barlow-condensed)] text-2xl font-extrabold uppercase tracking-tight">
-                      {vertical === "comicon" ? "Comic-cons" : vertical}
-                    </p>
-                    <p className="mt-1 text-sm opacity-70">
-                      {countByVertical[vertical]} active windows
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </div>
-            <TaxonomyExplorer />
-          </div>
         </section>
 
         {/* Upcoming drops */}
@@ -414,6 +355,23 @@ export default async function HomePage() {
           ) : (
             <p className="text-white/50 text-center py-12">No upcoming drops scheduled.</p>
           )}
+        </section>
+
+        {/* New Releases (HoloGrid) */}
+        <section
+          id="new-releases"
+          aria-labelledby="new-releases-heading"
+          className="bg-white/[0.03] py-12 sm:py-16"
+        >
+          <div className="mx-auto max-w-7xl px-4 md:px-6">
+            <HoloGrid
+              cards={holoCards}
+              heading="New Releases"
+              subheading="Fresh drops across games, anime, and conventions — straight from the database."
+              layout="grid"
+              showToolbar
+            />
+          </div>
         </section>
 
         {/* Curated Releases */}
@@ -511,51 +469,273 @@ export default async function HomePage() {
           </div>
         </section>
 
-        {/* Hologram Roster */}
+        {/* What we track / Hologram Roster - VHS style with TaxonomyExplorer */}
         <section
-          id="roster"
-          aria-labelledby="roster-heading"
+          id="track"
+          aria-labelledby="track-heading"
           className="bg-white/[0.03] py-12 sm:py-16"
         >
-          <div className="mx-auto max-w-7xl px-4 md:px-6">
-            <HoloGrid
-              cards={holoCards}
-              heading="Hologram Roster"
-              subheading="Filterable cards generated from database entries."
-              layout="grid"
-              showToolbar
-            />
+          <style>{`
+            @import url('https://fonts.googleapis.com/css2?family=Kalam:wght@400;700&family=IBM+Plex+Mono:wght@400;600&display=swap');
+            .vhs-track-shelf {
+              background:
+                radial-gradient(circle at top, rgba(255,180,80,.06), transparent 50%),
+                #0e0b08;
+              border: 1px solid #2e2415;
+              border-radius: 8px;
+              overflow: hidden;
+            }
+            .vhs-track-header {
+              padding: 16px 20px 12px;
+              border-bottom: 1px solid #2a1e10;
+              background: linear-gradient(180deg, #1a140d 0%, #150f09 100%);
+            }
+            .vhs-track-eyebrow {
+              font-family: 'IBM Plex Mono', monospace;
+              font-size: 10px;
+              font-weight: 600;
+              letter-spacing: 0.28em;
+              text-transform: uppercase;
+              color: #7a6040;
+              margin-bottom: 6px;
+            }
+            .vhs-track-title {
+              font-family: 'Kalam', cursive;
+              font-weight: 700;
+              font-size: 18px;
+              color: #e8d8b0;
+              line-height: 1.2;
+            }
+            .vhs-track-tape-list {
+              padding: 16px 20px 20px;
+              display: flex;
+              flex-direction: column;
+              gap: 0;
+            }
+            .vhs-track-tape {
+              display: flex;
+              align-items: center;
+              justify-content: space-between;
+              background: #0d0a06;
+              border: 1.5px solid #3a2818;
+              border-radius: 2px;
+              padding: 0 16px;
+              height: 72px;
+              margin-top: -2px;
+              position: relative;
+              overflow: hidden;
+              transition: transform 0.25s cubic-bezier(.15,.85,.35,1), box-shadow 0.25s ease;
+            }
+            .vhs-track-tape:first-child { margin-top: 0; }
+            .vhs-track-tape:hover {
+              transform: translateX(10px);
+              box-shadow: -8px 4px 24px rgba(0,0,0,.9);
+              z-index: 2;
+              border-color: #6a5030;
+            }
+            .vhs-track-tape-label {
+              position: absolute;
+              left: 10px; top: 50%;
+              transform: translateY(-50%);
+              width: 62%;
+              height: 52px;
+              background: linear-gradient(rgba(255,255,255,.06), rgba(0,0,0,.04)), #ede3c5;
+              border-radius: 1px;
+              display: flex;
+              align-items: center;
+              padding: 0 14px;
+              box-shadow: inset 0 1px rgba(255,255,255,.35), inset 0 -1px rgba(0,0,0,.06);
+              overflow: hidden;
+            }
+            .vhs-track-tape-label::after {
+              content: '';
+              position: absolute;
+              right: -3px; top: 0; bottom: 0;
+              width: 6px;
+              background: linear-gradient(to right, #d4c9a0, #b8a87a, transparent);
+              clip-path: polygon(0 0, 60% 8%, 100% 3%, 80% 22%, 100% 40%, 70% 55%, 100% 70%, 80% 88%, 100% 100%, 0 100%);
+            }
+            .vhs-track-tape-name {
+              font-family: 'Kalam', cursive;
+              font-weight: 700;
+              font-size: 22px;
+              color: #150900;
+              letter-spacing: 0.06em;
+              text-transform: uppercase;
+              line-height: 1;
+              white-space: nowrap;
+            }
+            .vhs-track-tape-count {
+              font-family: 'IBM Plex Mono', monospace;
+              font-size: 9px;
+              color: #6b5a3a;
+              margin-top: 3px;
+              letter-spacing: 0.05em;
+            }
+            .vhs-track-tape-spine {
+              position: absolute;
+              right: 14px; top: 50%;
+              transform: translateY(-50%);
+              text-align: right;
+            }
+            .vhs-track-spine-label {
+              font-family: 'IBM Plex Mono', monospace;
+              font-size: 9px;
+              color: #b7a68f;
+              letter-spacing: 0.14em;
+              text-transform: uppercase;
+              display: block;
+            }
+            .vhs-track-barcode {
+              display: flex;
+              gap: 1px;
+              margin-top: 5px;
+              justify-content: flex-end;
+            }
+            .vhs-track-barcode span {
+              background: #5a4a35;
+              display: block;
+              height: 12px;
+            }
+            .vhs-track-tape--games { border-left: 3px solid #b05a10; }
+            .vhs-track-tape--anime { border-left: 3px solid #8b3ab5; }
+            .vhs-track-tape--comicon { border-left: 3px solid #0f8f9e; }
+          `}</style>
+          <div className="mx-auto grid max-w-7xl gap-8 px-4 md:px-6 lg:grid-cols-[0.85fr_1.15fr]">
+            <div>
+              <SectionHeading
+                eyebrow="What we track"
+                title="Games, anime, and convention windows"
+                copy="Taxonomy-driven browsing — the component owns the UI, the data stays clean."
+              />
+              <div className="vhs-track-shelf">
+                <div className="vhs-track-header">
+                  <p className="vhs-track-eyebrow">— your collection —</p>
+                  <p className="vhs-track-title">Active Windows</p>
+                </div>
+                <div className="vhs-track-tape-list">
+                  {(["games", "anime", "comicon"] as const).map((vertical, i) => {
+                    const spineLabels: Record<string, string> = {
+                      games:   "Arcade",
+                      anime:   "Bandai",
+                      comicon: "Con Circuit",
+                    };
+                    const barcodes = [
+                      [2,1,3,1,2],
+                      [1,3,1,2,1],
+                      [3,1,2,1,3],
+                    ];
+                    return (
+                      <div key={vertical} className={`vhs-track-tape vhs-track-tape--${vertical}`}>
+                        <div className="vhs-track-tape-label">
+                          <div>
+                            <div className="vhs-track-tape-name">
+                              {vertical === "comicon" ? "Comic-Cons" : vertical}
+                            </div>
+                            <div className="vhs-track-tape-count">
+                              {countByVertical[vertical] > 0
+                                ? `${countByVertical[vertical]} active windows`
+                                : "no entries yet"}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="vhs-track-tape-spine">
+                          <span className="vhs-track-spine-label">{spineLabels[vertical]}</span>
+                          <div className="vhs-track-barcode">
+                            {barcodes[i].map((w, bi) => (
+                              <span key={bi} style={{ width: `${w}px` }} />
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+            <TaxonomyExplorer />
           </div>
         </section>
 
-        {/* Notes */}
+        {/* Blogs */}
         <section
-          id="notes"
-          aria-labelledby="notes-heading"
+          id="blogs"
+          aria-labelledby="blogs-heading"
           className="mx-auto max-w-7xl px-4 py-12 sm:py-16 md:px-6"
         >
-          <div className="grid gap-8 lg:grid-cols-[0.9fr_1.1fr]">
+          <div className="flex flex-wrap items-end justify-between gap-4">
             <SectionHeading
-              eyebrow="Stay tuned for more updates"
-              title="Tips before the clock runs out"
+              eyebrow="From the hub"
+              title="Latest from the Blog"
+              copy="Guides, breakdowns, and quick takes on what's dropping next."
             />
-            <div className="grid gap-3 sm:grid-cols-3">
-              {(
-                [
-                  ["CODM", "Weeklies first. BP tiers do not wait."],
-                  ["PUBG", "Stack missions before chasing late RP rewards."],
-                  ["Heads up", "Dates can slip when official blogs update."],
-                ] as const
-              ).map(([title, copy]) => (
-                <article key={title} className="border border-white/10 bg-zinc-900/70 p-5">
-                  <h3 className="font-[family-name:var(--font-barlow-condensed)] text-2xl font-extrabold uppercase tracking-tight text-white">
-                    {title}
-                  </h3>
-                  <p className="mt-2 text-sm leading-6 text-white/45">{copy}</p>
-                </article>
-              ))}
-            </div>
+            <Link
+              href="/blog"
+              className="text-[11px] font-bold uppercase tracking-[0.18em] text-white/40 hover:text-orange-400 transition-colors"
+            >
+              View all →
+            </Link>
           </div>
+
+          {/* Blog Posts Strip */}
+          {latestBlogPosts.length > 0 ? (
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {latestBlogPosts.map((post) => {
+                  const dateStr = post.published_at
+                    ? new Intl.DateTimeFormat("en", {
+                        month: "short",
+                        day: "numeric",
+                        year: "numeric",
+                      }).format(new Date(post.published_at))
+                    : "";
+                  return (
+                    <Link
+                      key={post.id}
+                      href={`/blog/${post.slug}`}
+                      className="group flex flex-col gap-3 border border-white/10 bg-zinc-900/60 hover:border-white/25 hover:bg-zinc-900/90 transition-all duration-300 p-4 rounded-lg"
+                    >
+                      {post.cover_url && (
+                        <div className="aspect-video w-full overflow-hidden rounded bg-zinc-950 border border-white/5">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={post.cover_url}
+                            alt={post.title}
+                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                            referrerPolicy="no-referrer"
+                          />
+                        </div>
+                      )}
+                      <div className="flex flex-col gap-1.5 flex-1">
+                        {post.tags?.slice(0, 2).map((tag: string) => (
+                          <span
+                            key={tag}
+                            className="inline-block w-fit text-[9px] font-bold uppercase tracking-[0.14em] bg-orange-500/10 border border-orange-500/20 text-orange-300/70 px-1.5 py-0.5 rounded"
+                          >
+                            #{tag}
+                          </span>
+                        ))}
+                        <h3 className="font-[family-name:var(--font-barlow-condensed)] text-lg font-extrabold uppercase leading-tight tracking-tight text-white group-hover:text-orange-400 transition-colors line-clamp-2">
+                          {post.title}
+                        </h3>
+                        {post.summary && (
+                          <p className="text-xs leading-5 text-white/45 line-clamp-2">
+                            {post.summary}
+                          </p>
+                        )}
+                      </div>
+                      <div className="flex items-center justify-between border-t border-white/5 pt-3 mt-auto">
+                        <span className="text-[10px] text-white/30">{dateStr}</span>
+                        <span className="text-[11px] font-bold uppercase tracking-wider text-orange-400 group-hover:text-orange-300 transition-colors">
+                          Read →
+                        </span>
+                      </div>
+                    </Link>
+                  );
+                })}
+              </div>
+          ) : (
+            <p className="text-white/50 text-center py-12">No blog posts yet.</p>
+          )}
 
           <div className="mt-10 flex flex-col gap-3 border border-white/10 bg-white/[0.04] p-4 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-sm text-white/55">
