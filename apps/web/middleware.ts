@@ -1,4 +1,4 @@
-// middleware.ts  (root of your Next.js app — same level as app/)
+// middleware.ts (root of your Next.js app — same level as app/)
 // ─────────────────────────────────────────────────────────────────────────────
 // Refreshes the Supabase session cookie on every request so the server layout
 // always sees a valid, non-expired token.
@@ -20,7 +20,7 @@ export async function middleware(request: NextRequest) {
         getAll() {
           return request.cookies.getAll();
         },
-        setAll(cookiesToSet) {
+        setAll(cookiesToSet: { name: string; value: string; options?: any }[]) {
           cookiesToSet.forEach(({ name, value }) =>
             request.cookies.set(name, value)
           );
